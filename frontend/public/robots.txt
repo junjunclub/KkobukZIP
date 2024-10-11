@@ -1,5 +1,6 @@
 User-agent: *
 Disallow: /admin/
+Sitemap: https://yourdomain.com/sitemap.xml
 
 #  _____  _____   ___  ______ __   __   __   __   _    _       _____   __   _____  ______
 # /  ___|/  ___| / _ \ |  ___|\ \ / /  /  | /  | | |  | |     /  __ \ /  | |  _  ||___  /
