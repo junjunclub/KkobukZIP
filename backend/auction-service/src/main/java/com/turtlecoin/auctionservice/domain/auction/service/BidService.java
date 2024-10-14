@@ -43,7 +43,7 @@ public class BidService {
 
         redisTemplate.opsForValue().set(key, "ready");
 
-        redisTemplate.expire(key, (long) (30.1*1000), TimeUnit.MILLISECONDS); // TTL 30초 설정
+        redisTemplate.expire(key, (long) (30.01*1000), TimeUnit.MILLISECONDS); // TTL 30초 설정
 
         Long remainingTime = redisTemplate.getExpire(key, TimeUnit.MILLISECONDS);
         auction.updateStatus(AuctionProgress.DURING_AUCTION);
@@ -153,7 +153,7 @@ public class BidService {
             throw new AuctionTimeNotValidException("입찰 가능한 시간이 아닙니다.");
         } else {
             // 입찰시간 갱신
-            redisTemplate.expire(key, (long) (30.1*1000), TimeUnit.MILLISECONDS); // TTL 30초 재설정
+            redisTemplate.expire(key, (long) (30.01*1000), TimeUnit.MILLISECONDS); // TTL 30초 재설정
         }
     }
 
@@ -274,13 +274,13 @@ public class BidService {
         String key = AUCTION_END_KEY_PREFIX + auctionId;
         String timeToString = endTime.toString();
         ValueOperations<String, Object> ops = redisTemplate.opsForValue();
-        ops.set(key, timeToString, (long) (30.1*1000), TimeUnit.MILLISECONDS); // TTL 30초 설정
+        ops.set(key, timeToString, (long) (30.01*1000), TimeUnit.MILLISECONDS); // TTL 30초 설정
     }
 
     // 경매 종료 시간 갱신
     public void resetAuctionEndTime(Long auctionId) {
         String key = AUCTION_END_KEY_PREFIX + auctionId;
-        redisTemplate.expire(key, (long) (30.1*1000), TimeUnit.MILLISECONDS); // TTL 30초 재설정
+        redisTemplate.expire(key, (long) (30.01*1000), TimeUnit.MILLISECONDS); // TTL 30초 재설정
     }
 
     // 경매 종료 시간 조회
