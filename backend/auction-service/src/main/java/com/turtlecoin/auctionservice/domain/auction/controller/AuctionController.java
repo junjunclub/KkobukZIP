@@ -11,6 +11,7 @@ import com.turtlecoin.auctionservice.domain.auction.service.SchedulingService;
 import com.turtlecoin.auctionservice.domain.auction.service.SseService;
 import com.turtlecoin.auctionservice.domain.s3.service.ImageUploadService;
 import com.turtlecoin.auctionservice.domain.turtle.entity.Gender;
+import com.turtlecoin.auctionservice.global.ApiResponse;
 import com.turtlecoin.auctionservice.global.exception.*;
 import com.turtlecoin.auctionservice.global.response.ResponseVO;
 import com.turtlecoin.auctionservice.global.utils.JWTUtil;
@@ -80,15 +81,17 @@ public class AuctionController {
 
     // 경매 등록
     @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
-    public ResponseEntity<?> registerAuction(
+    public ApiResponse registerAuction(
             @RequestPart("data") RegisterAuctionDTO registerAuctionDTO,
             @RequestPart(value = "images", required = false) List<MultipartFile> multipartFiles) {
             // 경매 생성 및 이미지 처리
-            return auctionService.registerAuction(registerAuctionDTO, multipartFiles);
+            return ApiResponse.success(HttpStatus.OK, auctionService.registerAuction(registerAuctionDTO, multipartFiles), "경매 등록 성공");
+//            return auctionService.registerAuction(registerAuctionDTO, multipartFiles);
     }
 
+    // 경매 조회
     @GetMapping
-    public ResponseEntity<?> getAuctions(
+    public ApiResponse getAuctions(
             @RequestParam(value = "gender", required = false) Gender gender,
             @RequestParam(value = "size", required = false) String size,
             @RequestParam(value = "price", required = false) String price,
@@ -126,19 +129,21 @@ public class AuctionController {
         }
         log.info("Gender : {}, minSize : {}, maxSize : {}, minPrice : {}, maxPrice: {}", gender, minSize, maxSize, minPrice, maxPrice);
         // 기존 서비스 메서드를 호출
-        return auctionService.getFilteredAuctions(gender, minSize, maxSize, minPrice, maxPrice, progress, page);
+        return ApiResponse.success(HttpStatus.OK, auctionService.getFilteredAuctions(gender, minSize, maxSize, minPrice, maxPrice, progress, page), "경매 조회에 성공했습니다.");
+//        return auctionService.getFilteredAuctions(gender, minSize, maxSize, minPrice, maxPrice, progress, page);
     }
 
 
     @GetMapping("/{auctionId}")
-    public ResponseEntity<?> getAuctionById(@PathVariable Long auctionId) {
-        return auctionService.getAuctionById(auctionId);
+    public ApiResponse getAuctionById(@PathVariable Long auctionId) {
+        return ApiResponse.success(HttpStatus.OK, auctionService.getAuctionById(auctionId), "상세 경매 조회에 성공했습니다.");
+//        return auctionService.getAuctionById(auctionId);
     }
 
-    @GetMapping("/{auctionId}/test")
-    public void test(@PathVariable Long auctionId) {
-        bidService.startAuction(auctionId);
-    }
+//    @GetMapping("/{auctionId}/test")
+//    public void test(@PathVariable Long auctionId) {
+//        bidService.startAuction(auctionId);
+//    }
 
     @GetMapping("/my")
     public ResponseEntity<?> getMyAuctions(@RequestHeader("Authorization") String token) {
