@@ -2,6 +2,7 @@ package com.turtlecoin.auctionservice.domain.auction.service;
 
 import com.turtlecoin.auctionservice.domain.auction.entity.Auction;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionProgress;
+import com.turtlecoin.auctionservice.domain.auction.exception.AuctionExceptionMessage;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
 import com.turtlecoin.auctionservice.domain.websocket.dto.BidMessage;
 import com.turtlecoin.auctionservice.feign.dto.UserResponseDTO;
@@ -37,7 +38,7 @@ public class BidService {
     // 경매 시작 로직... 그런데 어떻게 경매가 시작된줄 알 수 있을까?
     @Transactional
     public void startAuction(Long auctionId) {
-        Auction auction = auctionRepository.findById(auctionId).orElseThrow(() -> new AuctionNotFoundException("경매를 찾을 수 없습니다: " + auctionId));
+        Auction auction = getOrElseThrow(auctionId);
 
         String key = AUCTION_END_KEY_PREFIX + auctionId;
 
@@ -49,6 +50,10 @@ public class BidService {
         auction.updateStatus(AuctionProgress.DURING_AUCTION);
         // sse로 경매 시작을 알림
         sseService.notify(auction.getId(), "Auction Started");
+    }
+
+    private Auction getOrElseThrow(Long auctionId) {
+        return auctionRepository.findById(auctionId).orElseThrow(() -> new BusinessException(AuctionExceptionMessage.AUCTION_NOT_FOUND));
     }
 
     // 입찰 가격 갱신

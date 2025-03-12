@@ -4,8 +4,13 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.turtlecoin.auctionservice.domain.auction.dto.*;
 import com.turtlecoin.auctionservice.domain.auction.entity.*;
+import com.turtlecoin.auctionservice.domain.auction.exception.AuctionExceptionMessage;
+import com.turtlecoin.auctionservice.domain.auction.exception.PhotoNotUploadedException;
+import com.turtlecoin.auctionservice.domain.auction.exception.TurtleExceptionMessage;
 import com.turtlecoin.auctionservice.domain.auction.facade.RedissonLockFacade;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
+import com.turtlecoin.auctionservice.domain.s3.exception.S3ExceptionMessage;
+import com.turtlecoin.auctionservice.domain.s3.exception.S3UploadFailedException;
 import com.turtlecoin.auctionservice.domain.s3.service.ImageUploadService;
 import com.turtlecoin.auctionservice.feign.dto.TurtleFilteredResponseDTO;
 import com.turtlecoin.auctionservice.feign.dto.TurtleResponseDTO;
@@ -18,16 +23,13 @@ import com.turtlecoin.auctionservice.global.response.ResponseVO;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.AmqpConnectException;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -58,116 +60,83 @@ public class AuctionService {
 
     // 경매 등록
     @Transactional
-    public ResponseEntity<?> registerAuction(RegisterAuctionDTO registerAuctionDTO, List<MultipartFile> images) {
-        List<AuctionPhoto> uploadedPhotos = new ArrayList<>();
-        try {
-            if (registerAuctionDTO.getTurtleId() == null || registerAuctionDTO.getSellerAddress() == null || registerAuctionDTO.getTitle() == null || registerAuctionDTO.getMinBid() == null) {
-                throw new IllegalArgumentException("필수 필드가 누락됐습니다.");
-            }
-            log.info("첫번째 검증");
-            validateUserOwnsTurtle(registerAuctionDTO.getUserId(), registerAuctionDTO.getTurtleId());
-            log.info("두번째 검증");
-            validateTurtleNotAlreadyRegistered(registerAuctionDTO.getTurtleId());
-            log.info("세번째 검증");
-            validateDate(registerAuctionDTO.getStartTime());
-
-            log.info("검증 끝");
-
-            // 이미지가 없으면 예외 던지기
-            if (images == null || images.isEmpty()) {
-                log.info("이미지가 없음");
-                throw new PhotoNotUploadedException("사진이 등록되지 않았습니다.");
-            }
-
-            uploadedPhotos = uploadImages(images, null);  // 경매와 아직 연결되지 않은 상태에서 업로드
-            log.info("이미지 업로드 완료");
-
-            // 경매 저장
-            Auction auction = auctionRepository.save(registerAuctionDTO.toEntity());
-            log.info("경매 저장");
-            // 동적 스케줄링 수행
-            Consumer<Long> startAuction = bidService::startAuction;
-            schedulingService.scheduleTask(auction.getId(), startAuction, auction.getStartTime());
-            log.info("스케줄링 완료");
-            // 이미지 업로드 처리
-            if (images != null && !images.isEmpty()) {
-                uploadedPhotos = uploadImages(images, auction);  // 이미지 업로드
-                auction.getAuctionPhotos().addAll(uploadedPhotos);  // 업로드된 이미지 경매와 연결
-            } else {
-                throw new PhotoNotUploadedException("사진이 등록되지 않았습니다.");
-            }
-            return new ResponseEntity<>(ResponseVO.success("경매가 등록됐습니다.","auctionId", auction.getId()), HttpStatus.OK);
-
-
-        } catch (TurtleAlreadyRegisteredException e) {
-            return new ResponseEntity<>(ResponseVO.failure("409", "이미 등록된 개체입니다."), HttpStatus.CONFLICT);
-
-        } catch (IOException e) {
-            log.info("IOException 발생");
-            return new ResponseEntity<>(ResponseVO.failure("400", "경매 등록에 실패했습니다. " + e.getMessage()), HttpStatus.BAD_REQUEST);
-
-        } catch (NumberFormatException e) {
-            // 숫자 형식이 잘못된 경우 예외 처리
-            deleteUploadedImages(uploadedPhotos);
-            return new ResponseEntity<>(ResponseVO.failure("400", "잘못된 형식의 입력값이 있습니다."), HttpStatus.BAD_REQUEST);
-
-        } catch (IllegalArgumentException e) {
-            // 기타 잘못된 인자 처리
-            deleteUploadedImages(uploadedPhotos);
-            return new ResponseEntity<>(ResponseVO.failure("400", "필수 필드가 누락되었습니다."), HttpStatus.BAD_REQUEST);
-        } catch (PhotoNotUploadedException e) {
-            return new ResponseEntity<>(ResponseVO.failure("400", "사진이 등록되지 않았습니다."), HttpStatus.BAD_REQUEST);
-        } catch (MultipartException e) {
-            // Multipart 관련 예외 처리
-            log.error("MultipartException 발생: {}", e.getMessage());
-            deleteUploadedImages(uploadedPhotos);
-            return new ResponseEntity<>(ResponseVO.failure("400", "잘못된 요청입니다. multipart/form-data 형식으로 요청해주세요."), HttpStatus.BAD_REQUEST);
-        } catch (AuctionTimeNotValidException e) {
-            return new ResponseEntity<>(ResponseVO.failure("400", "현재시간보다 이전으로 경매시작시간을 등록할 수 없습니다,"), HttpStatus.BAD_REQUEST);
+    public void registerAuction(RegisterAuctionDTO dto, List<MultipartFile> images) {
+        // 이미지가 없으면 예외 던지기
+        if (images == null || images.isEmpty()) {
+            throw new BusinessException(AuctionExceptionMessage.PHOTO_NOT_UPLOADED);
         }
 
-        catch (Exception e) {
-            log.info("기타 오류 발생");
-            deleteUploadedImages(uploadedPhotos);
-            return new ResponseEntity<>(ResponseVO.failure("500", "서버 내부 오류가 발생했습니다. " + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        validDTO(dto);
+        validateUserOwnsTurtle(dto.getUserId(), dto.getTurtleId());
+        validateTurtleNotAlreadyRegistered(dto.getTurtleId());
+        validateDate(dto.getStartTime());
+
+
+        List<AuctionPhoto> uploadedPhotos = new ArrayList<>();
+//        uploadedPhotos = uploadImages(images, null);  // 경매와 아직 연결되지 않은 상태에서 업로드
+        log.info("이미지 업로드 완료");
+
+        // 경매 저장
+        Auction auction = auctionRepository.save(dto.toEntity());
+
+        // 동적 스케줄링 수행
+        Consumer<Long> startAuction = bidService::startAuction;
+        schedulingService.scheduleTask(auction.getId(), startAuction, auction.getStartTime());
+
+        // 이미지 업로드 처리
+        uploadedPhotos = uploadImages(images, auction);  // 이미지 업로드
+        auction.getAuctionPhotos().addAll(uploadedPhotos);  // 업로드된 이미지 경매와 연결
+    }
+
+    private static void validDTO(RegisterAuctionDTO registerAuctionDTO) {
+        if (registerAuctionDTO.getTurtleId() == null || registerAuctionDTO.getSellerAddress() == null || registerAuctionDTO.getTitle() == null || registerAuctionDTO.getMinBid() == null) {
+            throw new IllegalArgumentException("필수 필드가 누락됐습니다.");
         }
     }
 
     // 이미지 업로드 처리 메서드
-    private List<AuctionPhoto> uploadImages(List<MultipartFile> images, Auction auction) throws IOException {
+    private List<AuctionPhoto> uploadImages(List<MultipartFile> images, Auction auction) {
         List<AuctionPhoto> photos = new ArrayList<>();
-        for (MultipartFile image : images) {
-            String imagePath = imageUploadService.upload(image, "auctionImages");
-            photos.add(AuctionPhoto.builder().imageAddress(imagePath).auction(auction).build());
+        try {
+            for (MultipartFile image : images) {
+                String imagePath = imageUploadService.upload(image, "auctionImages");
+                photos.add(AuctionPhoto.builder().imageAddress(imagePath).auction(auction).build());
+            }
+            return photos;
+        } catch (IOException e) {
+            throw new CustomIOException(S3ExceptionMessage.S3_UPLOAD_FAILED);
         }
-        return photos;
     }
 
     // 사용자가 소유한 거북이인지 검증 메서드
     private void validateUserOwnsTurtle(Long userId, Long turtleId) {
         log.info("Main-service에서 조회");
-        List<TurtleResponseDTO> userTurtles = mainClient.getTurtlesByUserId(userId);
+        List<TurtleResponseDTO> userTurtles = getTurtlesByUserId(userId);
 
         if (userTurtles.isEmpty()) {
-            throw new UserNotFoundException("유저의 거북이를 찾을 수 없습니다: " + userId);
+            throw new BusinessException(TurtleExceptionMessage.TURTLE_NOT_FOUND);
         }
         log.info("거북이 확인 완료");
         boolean isUserTurtle = userTurtles.stream().anyMatch(turtle -> turtle.getId().equals(turtleId));
         if (!isUserTurtle) {
-            throw new TurtleNotFoundException("해당 거북이는 사용자가 소유한 거북이가 아닙니다.");
+            throw new BusinessException(TurtleExceptionMessage.TURTLE_NOT_OWNED);
         }
         log.info("거북이 일치여부 확인 완료");
     }
 
+    private List<TurtleResponseDTO> getTurtlesByUserId(Long userId) {
+        return mainClient.getTurtlesByUserId(userId);
+    }
+
     private void validateDate(LocalDateTime startTime) {
         if (startTime.isBefore(LocalDateTime.now())) {
-            throw new AuctionTimeNotValidException("현재보다 이전 시간을 시작시간으로 등록할 수 없습니다.");
+            throw new BusinessException(AuctionExceptionMessage.AUCTION_TIME_NOT_VALID);
         }
     }
 
     private void validateTurtleNotAlreadyRegistered(Long turtleId) {
         if (auctionRepository.countInProgressAuctionByTurtleId(AuctionProgress.BEFORE_AUCTION, AuctionProgress.DURING_AUCTION, turtleId) > 0) {
-            throw new TurtleAlreadyRegisteredException("이미 등록된 거북이는 등록할 수 없습니다.");
+            throw new BusinessException(TurtleExceptionMessage.TURTLE_ALREADY_REGISTERED);
         }
     }
 
@@ -214,17 +183,17 @@ public class AuctionService {
                 log.warn("거북이 정보를 찾을 수 없습니다: turtleId={}", auction.getTurtleId());
                 throw new TurtleNotFoundException("Main-service에서 거북이정보를 찾을 수 없습니다.");
             }
-            log.info("TurtleID: {}",turtle.getId());
+            log.info("TurtleID: {}", turtle.getId());
             UserResponseDTO user = mainClient.getUserById(auction.getUserId());
             if (turtle == null) {
                 log.warn("사용자 정보를 찾을 수 없습니다: UserId={}", auction.getUserId());
                 throw new UserNotFoundException("Main-service에서 사용자정보를 찾을 수 없습니다.");
             }
-            log.info("UserID: {}",user.getUserId());
+            log.info("UserID: {}", user.getUserId());
 
-            String key = AUCTION_END_KEY_PREFIX+auction;
+            String key = AUCTION_END_KEY_PREFIX + auction;
             // null값일 때 어떻게 하지?
-            Long remainingTime = redisTemplate.getExpire(AUCTION_END_KEY_PREFIX+auctionId, TimeUnit.MILLISECONDS);
+            Long remainingTime = redisTemplate.getExpire(AUCTION_END_KEY_PREFIX + auctionId, TimeUnit.MILLISECONDS);
 
 //            // 종료됐거나, 시작하지 않았을 때
 //            if (remainingTime == -2) {
@@ -256,49 +225,44 @@ public class AuctionService {
             return new ResponseEntity<>(ResponseVO.failure("400", e.getMessage()), HttpStatus.BAD_REQUEST);
 
         } catch (FeignException e) {
-          return new ResponseEntity<>(ResponseVO.failure("503", "Main-Service가 응답하지 않습니다."+e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
-        } catch(Exception e){
-            return new ResponseEntity<>(ResponseVO.failure("500","경매 조회 과정 중에 서버 에러가 발생하였습니다."), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(ResponseVO.failure("503", "Main-Service가 응답하지 않습니다." + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (Exception e) {
+            return new ResponseEntity<>(ResponseVO.failure("500", "경매 조회 과정 중에 서버 에러가 발생하였습니다."), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    public List<AuctionListResponseDto> getMyAuctions(Long userId) throws IOException {
+    public List<AuctionListResponseDto> getMyAuctions(Long userId) {
+        // Auction 엔티티 목록 가져오기
+        List<Auction> auctions = auctionRepository.findAllByUser(userId);
 
-        try{
-            // Auction 엔티티 목록 가져오기
-            List<Auction> auctions = auctionRepository.findAllByUser(userId);
+        // Turtle 정보와 User 정보는 각 Auction과 관련된 데이터를 적절히 조회해서 전달해야 합니다.
+        return auctions.stream()
+                .map(auction -> {
+                    // 첫 번째 이미지 주소 추출
+                    String firstImageUrl = auction.getFirstImageUrl();
 
-            // Turtle 정보와 User 정보는 각 Auction과 관련된 데이터를 적절히 조회해서 전달해야 합니다.
-            return auctions.stream()
-                    .map(auction -> {
-                        // 첫 번째 이미지 주소 추출
-                        String firstImageUrl = auction.getFirstImageUrl();
+                    // AuctionResultDTO로 변환
+                    return AuctionListResponseDto.builder()
 
-                        // AuctionResultDTO로 변환
-                        return AuctionListResponseDto.builder()
-
-                                .title(auction.getTitle())
-                                .content(auction.getContent())
-                                .weight(auction.getWeight())
-                                .turtleId(auction.getTurtleId())
-                                .id(auction.getId())
-                                .sellerAddress(auction.getSellerAddress())
-                                .auctionFlag(true)
-                                .progress(auction.getAuctionProgress())
-                                .buyerId(auction.getBuyerId())
-                                .sellerId(auction.getUserId())
-                                .images(firstImageUrl)
-                                .tags(auction.getAuctionTags().stream()
-                                        .map(AuctionTag::getTag)
-                                        .collect(Collectors.toList())) // 태그 리스트
-                                .build();
-                    })
-                    .toList(); // 리스트로 수집
-        }catch(Exception e){
-            throw new IOException("내 경매 조회 중에 에러가 발생하였습니다.");
-        }
-
+                            .title(auction.getTitle())
+                            .content(auction.getContent())
+                            .weight(auction.getWeight())
+                            .turtleId(auction.getTurtleId())
+                            .id(auction.getId())
+                            .sellerAddress(auction.getSellerAddress())
+                            .auctionFlag(true)
+                            .progress(auction.getAuctionProgress())
+                            .buyerId(auction.getBuyerId())
+                            .sellerId(auction.getUserId())
+                            .images(firstImageUrl)
+                            .tags(auction.getAuctionTags().stream()
+                                    .map(AuctionTag::getTag)
+                                    .collect(Collectors.toList())) // 태그 리스트
+                            .build();
+                })
+                .toList(); // 리스트로 수집
     }
+
 
     // 경매 필터링 후 조회
     public ResponseEntity<?> getFilteredAuctions(Gender gender, Double minSize, Double maxSize, Double minPrice, Double maxPrice, AuctionProgress progress, int page) {
@@ -388,6 +352,7 @@ public class AuctionService {
         }
     }
 
+
 //    // 거북이 정보를 받아와서 경매정보를 DTO로 변환
 //    // 수정, 테스트 필요
 //    public AuctionResponseDTO convertToDTO(Auction auction) {
@@ -414,15 +379,14 @@ public class AuctionService {
     // 서버 재시작시 스케줄링 다시 등록하기
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
-    public void scheduleReload(){
+    public void scheduleReload() {
         List<Auction> acutions = auctionRepository.findByAuctionProgress(AuctionProgress.BEFORE_AUCTION);
 
-        for(Auction auction : acutions){
-            if(auction.getStartTime().isAfter(LocalDateTime.now())){
+        for (Auction auction : acutions) {
+            if (auction.getStartTime().isAfter(LocalDateTime.now())) {
                 Consumer<Long> startAuction = bidService::startAuction;
                 schedulingService.scheduleTask(auction.getId(), startAuction, auction.getStartTime());
             }
         }
     }
-
 }

@@ -2,7 +2,6 @@ package com.turtlecoin.auctionservice.domain.turtle.service;
 
 import com.turtlecoin.auctionservice.feign.dto.TurtleRequestDTO;
 import com.turtlecoin.auctionservice.feign.dto.TurtleResponseDTO;
-import com.turtlecoin.auctionservice.global.exception.TurtleNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
