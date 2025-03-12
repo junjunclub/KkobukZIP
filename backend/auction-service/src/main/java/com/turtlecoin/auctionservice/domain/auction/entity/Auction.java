@@ -81,6 +81,11 @@ public class Auction extends BaseEntity {
         this.winningBid = winningBid;
     }
 
+    // 태그 추가 메서드
+    public void addAuctionTags(List<AuctionTag> tags) {
+        this.auctionTags.addAll(tags);
+    }
+
     public String getFirstImageUrl() {
         return auctionPhotos.isEmpty() ? null : auctionPhotos.get(0).getImageUrl();
     }

@@ -1,5 +1,6 @@
 package com.turtlecoin.auctionservice.global.utils;
 
+import com.turtlecoin.auctionservice.domain.auction.exception.UserNotFoundException;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -93,6 +94,18 @@ public class JWTUtil {
             e.printStackTrace();  // 예외 발생 시 로그를 기록하거나 적절한 처리를 추가
             return false;
         }
+    }
+
+    public Long getUserIdFromToken(String token) {
+        String parsedToken = extractToken(token);
+        return getIdFromToken(parsedToken);
+    }
+
+    private String extractToken(String token) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            throw new UserNotFoundException();
+        }
+        return token.substring(7);
     }
 
 }

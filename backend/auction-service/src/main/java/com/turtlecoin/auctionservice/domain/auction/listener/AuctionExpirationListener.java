@@ -1,24 +1,16 @@
 package com.turtlecoin.auctionservice.domain.auction.listener;
 
-import com.turtlecoin.auctionservice.domain.auction.dto.AuctionResultDTO;
 import com.turtlecoin.auctionservice.domain.auction.entity.Auction;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionProgress;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
-import com.turtlecoin.auctionservice.domain.auction.service.AuctionService;
 import com.turtlecoin.auctionservice.domain.auction.service.SendService;
-import com.turtlecoin.auctionservice.global.exception.AuctionNotFoundException;
 import com.turtlecoin.auctionservice.global.response.ResponseVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.Map;
 
 @Slf4j
 @Component
