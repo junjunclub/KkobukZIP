@@ -1,11 +1,10 @@
 package com.turtlecoin.auctionservice.domain.auction.exception;
 
-import com.turtlecoin.auctionservice.global.exception.ExceptionMessage;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
-public enum TurtleExceptionMessage implements ExceptionMessage {
+public enum TurtleExceptionMessage {
     TURTLE_NOT_FOUND("해당 거북이가 존재하지 않습니다.", HttpStatus.NOT_FOUND),
     TURTLE_ALREADY_REGISTERED("이미 등록된 거북이입니다.", HttpStatus.CONFLICT),
     TURTLE_NOT_OWNED("해당 거북이는 사용자가 소유한 거북이가 아닙니다.", HttpStatus.BAD_REQUEST);

@@ -4,9 +4,7 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.turtlecoin.auctionservice.domain.auction.dto.*;
 import com.turtlecoin.auctionservice.domain.auction.entity.*;
-import com.turtlecoin.auctionservice.domain.auction.exception.AuctionExceptionMessage;
-import com.turtlecoin.auctionservice.domain.auction.exception.PhotoNotUploadedException;
-import com.turtlecoin.auctionservice.domain.auction.exception.TurtleExceptionMessage;
+import com.turtlecoin.auctionservice.domain.auction.exception.*;
 import com.turtlecoin.auctionservice.domain.auction.facade.RedissonLockFacade;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
 import com.turtlecoin.auctionservice.domain.s3.exception.S3ExceptionMessage;
@@ -63,12 +61,11 @@ public class AuctionService {
     public void registerAuction(RegisterAuctionDTO dto, List<MultipartFile> images) {
         // 이미지가 없으면 예외 던지기
         if (images == null || images.isEmpty()) {
-            throw new BusinessException(AuctionExceptionMessage.PHOTO_NOT_UPLOADED);
+            throw new PhotoNotUploadedException();
         }
 
-        validDTO(dto);
         validateUserOwnsTurtle(dto.getUserId(), dto.getTurtleId());
-        validateTurtleNotAlreadyRegistered(dto.getTurtleId());
+        validateTurtleInfo(dto.getTurtleId());
         validateDate(dto.getStartTime());
 
 
@@ -88,12 +85,6 @@ public class AuctionService {
         auction.getAuctionPhotos().addAll(uploadedPhotos);  // 업로드된 이미지 경매와 연결
     }
 
-    private static void validDTO(RegisterAuctionDTO registerAuctionDTO) {
-        if (registerAuctionDTO.getTurtleId() == null || registerAuctionDTO.getSellerAddress() == null || registerAuctionDTO.getTitle() == null || registerAuctionDTO.getMinBid() == null) {
-            throw new IllegalArgumentException("필수 필드가 누락됐습니다.");
-        }
-    }
-
     // 이미지 업로드 처리 메서드
     private List<AuctionPhoto> uploadImages(List<MultipartFile> images, Auction auction) {
         List<AuctionPhoto> photos = new ArrayList<>();
@@ -104,7 +95,7 @@ public class AuctionService {
             }
             return photos;
         } catch (IOException e) {
-            throw new CustomIOException(S3ExceptionMessage.S3_UPLOAD_FAILED);
+            throw new S3UploadFailedException();
         }
     }
 
@@ -114,12 +105,13 @@ public class AuctionService {
         List<TurtleResponseDTO> userTurtles = getTurtlesByUserId(userId);
 
         if (userTurtles.isEmpty()) {
-            throw new BusinessException(TurtleExceptionMessage.TURTLE_NOT_FOUND);
+            log.error("거북이 정보 조회 불가");
+            throw new TurtleNotFoundException();
         }
         log.info("거북이 확인 완료");
         boolean isUserTurtle = userTurtles.stream().anyMatch(turtle -> turtle.getId().equals(turtleId));
         if (!isUserTurtle) {
-            throw new BusinessException(TurtleExceptionMessage.TURTLE_NOT_OWNED);
+            throw new TurtleNotFoundException();
         }
         log.info("거북이 일치여부 확인 완료");
     }
@@ -130,13 +122,19 @@ public class AuctionService {
 
     private void validateDate(LocalDateTime startTime) {
         if (startTime.isBefore(LocalDateTime.now())) {
-            throw new BusinessException(AuctionExceptionMessage.AUCTION_TIME_NOT_VALID);
+            throw new AuctionTimeNotValidException();
         }
     }
 
-    private void validateTurtleNotAlreadyRegistered(Long turtleId) {
-        if (auctionRepository.countInProgressAuctionByTurtleId(AuctionProgress.BEFORE_AUCTION, AuctionProgress.DURING_AUCTION, turtleId) > 0) {
-            throw new BusinessException(TurtleExceptionMessage.TURTLE_ALREADY_REGISTERED);
+//    private void validateTurtleNotAlreadyRegistered(Long turtleId) {
+//        if (auctionRepository.countInProgressAuctionByTurtleId(AuctionProgress.BEFORE_AUCTION, AuctionProgress.DURING_AUCTION, turtleId) > 0) {
+//            throw new TurtleAlreadyRegisteredException();
+//        }
+//    }
+
+    private void validateTurtleInfo(Long turtleId) {
+        if (auctionRepository.existsByTurtleId(turtleId)) {
+            throw new TurtleAlreadyRegisteredException();
         }
     }
 
@@ -175,19 +173,19 @@ public class AuctionService {
     public ResponseEntity<?> getAuctionById(Long auctionId) {
         try {
             Auction auction = auctionRepository.findById(auctionId)
-                    .orElseThrow(() -> new AuctionNotFoundException("경매를 찾을 수 없습니다: " + auctionId));
+                    .orElseThrow(AuctionNotFoundException::new);
 
             TurtleFilteredResponseDTO turtle = mainClient.getTurtle(auction.getTurtleId());
 
             if (turtle == null) {
                 log.warn("거북이 정보를 찾을 수 없습니다: turtleId={}", auction.getTurtleId());
-                throw new TurtleNotFoundException("Main-service에서 거북이정보를 찾을 수 없습니다.");
+                throw new TurtleNotFoundException();
             }
             log.info("TurtleID: {}", turtle.getId());
             UserResponseDTO user = mainClient.getUserById(auction.getUserId());
             if (turtle == null) {
                 log.warn("사용자 정보를 찾을 수 없습니다: UserId={}", auction.getUserId());
-                throw new UserNotFoundException("Main-service에서 사용자정보를 찾을 수 없습니다.");
+                throw new UserNotFoundException();
             }
             log.info("UserID: {}", user.getUserId());
 

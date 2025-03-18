@@ -58,7 +58,9 @@ public class UserService {
             String imageUrl = null;
 
             try{
-                imageUrl = imageUploadService.upload(image, "user");
+                if (image != null) {
+                    imageUrl = imageUploadService.upload(image, "user");
+                }
             }catch (IOException e){
                 throw new S3SaveException("이미지 업로드 중 오류가 발생했습니다.");
             }
@@ -86,6 +88,7 @@ public class UserService {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ResponseVO.failure("500", e.getMessage()));
         } catch (Exception e) {
+            log.info(e.getMessage());
             return new ResponseEntity<>(ResponseVO.failure("500", "예상치 못한 오류가 발생했습니다."), HttpStatus.INTERNAL_SERVER_ERROR);
         }
 

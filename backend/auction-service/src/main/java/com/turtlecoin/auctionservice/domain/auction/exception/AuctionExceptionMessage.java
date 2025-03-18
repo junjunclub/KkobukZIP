@@ -5,7 +5,7 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
-public enum AuctionExceptionMessage implements ExceptionMessage {
+public enum AuctionExceptionMessage {
     AUCTION_NOT_FOUND("해당 경매가 존재하지 않습니다.", HttpStatus.NOT_FOUND),
     PHOTO_NOT_UPLOADED("사진이 등록되지 않았습니다.", HttpStatus.BAD_REQUEST),
     AUCTION_TIME_NOT_VALID("유효하지 않은 경매 시간입니다.", HttpStatus.BAD_REQUEST),
