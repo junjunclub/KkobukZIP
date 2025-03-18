@@ -4,6 +4,7 @@ import com.turtlecoin.auctionservice.domain.auction.entity.Auction;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionProgress;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionTag;
 import com.turtlecoin.auctionservice.domain.turtle.entity.Gender;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -26,6 +27,7 @@ public class RegisterAuctionDTO {
     private Long userId;
 
     @NotNull(message = "경매 시작 시간은 필수입니다.")
+    @FutureOrPresent(message = "경매 시작 시간은 현재 시각 이후여야 합니다.")
     private LocalDateTime startTime;
 
     @NotNull(message = "최소 입찰가는 필수입니다.")
