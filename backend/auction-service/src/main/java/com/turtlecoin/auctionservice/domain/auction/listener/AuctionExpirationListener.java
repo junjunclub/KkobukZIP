@@ -2,8 +2,11 @@ package com.turtlecoin.auctionservice.domain.auction.listener;
 
 import com.turtlecoin.auctionservice.domain.auction.entity.Auction;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionProgress;
+import com.turtlecoin.auctionservice.domain.auction.exception.AuctionExceptionMessage;
+import com.turtlecoin.auctionservice.domain.auction.exception.AuctionNotFoundException;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
 import com.turtlecoin.auctionservice.domain.auction.service.SendService;
+import com.turtlecoin.auctionservice.global.exception.BusinessException;
 import com.turtlecoin.auctionservice.global.response.ResponseVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +33,7 @@ public class AuctionExpirationListener implements MessageListener {
 
         if (expiredKey.startsWith(AUCTION_END_KEY_PREFIX)) {
             Long auctionId = Long.parseLong(expiredKey.substring(AUCTION_END_KEY_PREFIX.length()));
-            Auction auction = auctionRepository.findById(auctionId).orElseThrow(() -> new AuctionNotFoundException("경매를 찾을 수 없습니다."));
+            Auction auction = auctionRepository.findById(auctionId).orElseThrow(AuctionNotFoundException::new);
             try {
                 sendService.endAuction(auctionId);
             } catch (Exception e) {

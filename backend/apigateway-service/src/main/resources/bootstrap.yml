@@ -7,6 +7,8 @@ spring:
     config:
       uri: http://127.0.0.1:8888  # Config Server URI 설정
       name: apigateway-service
+  jwt:
+    secret: b58b7108ec5227847310472f51e47b7fff841dd2d26ffa3715e7b25472b2cb94e1c61f2615b4c554e46d54a1d19a1219a6e29b85a4401a3a4678bb3f10985e77
 #    gateway:
 #      routes:
 #        - id: main-service

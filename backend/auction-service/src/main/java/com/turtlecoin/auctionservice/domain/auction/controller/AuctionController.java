@@ -1,12 +1,10 @@
 package com.turtlecoin.auctionservice.domain.auction.controller;
 
-import com.turtlecoin.auctionservice.domain.auction.dto.AuctionListResponseDto;
-import com.turtlecoin.auctionservice.domain.auction.dto.AuctionResultDTO;
 import com.turtlecoin.auctionservice.domain.auction.dto.RegisterAuctionDTO;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionProgress;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
 import com.turtlecoin.auctionservice.domain.auction.service.AuctionService;
-import com.turtlecoin.auctionservice.domain.auction.service.BidService;
+//import com.turtlecoin.auctionservice.domain.auction.service.BidService;
 import com.turtlecoin.auctionservice.domain.auction.service.SchedulingService;
 import com.turtlecoin.auctionservice.domain.auction.service.SseService;
 import com.turtlecoin.auctionservice.domain.s3.service.ImageUploadService;
@@ -16,6 +14,7 @@ import com.turtlecoin.auctionservice.global.exception.*;
 import com.turtlecoin.auctionservice.global.response.ResponseVO;
 import com.turtlecoin.auctionservice.global.utils.JWTUtil;
 
+import jakarta.validation.Valid;
 import jakarta.ws.rs.sse.Sse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,7 +44,7 @@ public class AuctionController {
 
     private final ImageUploadService imageUploadService;
     private final AuctionService auctionService;
-    private final BidService bidService;
+//    private final BidService bidService;
     private final AuctionRepository auctionRepository;
     private final SchedulingService schedulingService;
     private final SseService sseService;
@@ -82,7 +81,7 @@ public class AuctionController {
     // 경매 등록
     @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     public ApiResponse registerAuction(
-            @RequestPart("data") RegisterAuctionDTO registerAuctionDTO,
+            @RequestPart("data") @Valid RegisterAuctionDTO registerAuctionDTO,
             @RequestPart(value = "images") List<MultipartFile> multipartFiles) {
 
             auctionService.registerAuction(registerAuctionDTO, multipartFiles);

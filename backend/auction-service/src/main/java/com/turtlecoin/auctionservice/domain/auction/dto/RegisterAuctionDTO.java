@@ -1,7 +1,6 @@
 package com.turtlecoin.auctionservice.domain.auction.dto;
 
 import com.turtlecoin.auctionservice.domain.auction.entity.Auction;
-import com.turtlecoin.auctionservice.domain.auction.entity.AuctionPhoto;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionProgress;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionTag;
 import com.turtlecoin.auctionservice.domain.turtle.entity.Gender;
@@ -10,11 +9,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
