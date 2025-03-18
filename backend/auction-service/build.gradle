@@ -35,14 +35,23 @@ bootJar {
 jar {
 	enabled = false
 }
+//
+//sourceSets {
+//	main {
+//		java {
+//			srcDirs = ['src/main/java', 'src/main/generated']
+//		}
+//	}
+//}
 
 sourceSets {
 	main {
 		java {
-			srcDirs = ['src/main/java', 'src/main/generated']
+			srcDirs += ["$buildDir/generated/sources/annotationProcessor/java/main"]
 		}
 	}
 }
+
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -91,9 +100,14 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 }
 
-tasks.withType(JavaCompile) {
-	options.annotationProcessorGeneratedSourcesDirectory = file("src/main/generated")
+//tasks.withType(JavaCompile) {
+//	options.annotationProcessorGeneratedSourcesDirectory = file("src/main/generated")
+//}
+
+tasks.withType(JavaCompile).configureEach {
+	options.annotationProcessorGeneratedSourcesDirectory = file("$buildDir/generated/sources/annotationProcessor/java/main")
 }
+
 
 dependencyManagement {
 	imports {

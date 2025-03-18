@@ -82,10 +82,8 @@ public class AuctionController {
     @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     public ApiResponse registerAuction(
             @RequestPart("data") @Valid RegisterAuctionDTO registerAuctionDTO,
-            @RequestPart(value = "images") List<MultipartFile> multipartFiles) {
-
+            @RequestPart(value = "images", required = false) List<MultipartFile> multipartFiles) {
             auctionService.registerAuction(registerAuctionDTO, multipartFiles);
-            // 경매 생성 및 이미지 처리
             return ApiResponse.success(HttpStatus.OK, "경매 등록 성공");
     }
 

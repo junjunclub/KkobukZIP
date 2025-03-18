@@ -59,19 +59,14 @@ public class AuctionService {
     // 경매 등록
     @Transactional
     public void registerAuction(RegisterAuctionDTO dto, List<MultipartFile> images) {
-        // 이미지가 없으면 예외 던지기
-        if (images == null || images.isEmpty()) {
-            throw new PhotoNotUploadedException();
-        }
+        // 이미지가 없을 경우 예외처리
+        imageValidation(images);
 
         validateUserOwnsTurtle(dto.getUserId(), dto.getTurtleId());
         validateTurtleInfo(dto.getTurtleId());
-        validateDate(dto.getStartTime());
-
 
         List<AuctionPhoto> uploadedPhotos = new ArrayList<>();
 //        uploadedPhotos = uploadImages(images, null);  // 경매와 아직 연결되지 않은 상태에서 업로드
-        log.info("이미지 업로드 완료");
 
         // 경매 저장
         Auction auction = auctionRepository.save(dto.toEntity());
@@ -83,6 +78,12 @@ public class AuctionService {
         // 이미지 업로드 처리
         uploadedPhotos = uploadImages(images, auction);  // 이미지 업로드
         auction.getAuctionPhotos().addAll(uploadedPhotos);  // 업로드된 이미지 경매와 연결
+    }
+
+    private static void imageValidation(List<MultipartFile> images) {
+        if (images == null || images.isEmpty()) {
+            throw new PhotoNotUploadedException();
+        }
     }
 
     // 이미지 업로드 처리 메서드
@@ -101,36 +102,30 @@ public class AuctionService {
 
     // 사용자가 소유한 거북이인지 검증 메서드
     private void validateUserOwnsTurtle(Long userId, Long turtleId) {
-        log.info("Main-service에서 조회");
         List<TurtleResponseDTO> userTurtles = getTurtlesByUserId(userId);
 
+        // 보유중인 거북이가 없을 경우
         if (userTurtles.isEmpty()) {
-            log.error("거북이 정보 조회 불가");
             throw new TurtleNotFoundException();
         }
-        log.info("거북이 확인 완료");
-        boolean isUserTurtle = userTurtles.stream().anyMatch(turtle -> turtle.getId().equals(turtleId));
+
+        boolean isUserTurtle = isUserTurtle(turtleId, userTurtles);
+
+        // 거북이가 자신의 소유가 아닐 경우
         if (!isUserTurtle) {
-            throw new TurtleNotFoundException();
+            throw new TurtleNotOwnedException();
         }
-        log.info("거북이 일치여부 확인 완료");
     }
 
+    // 거북이 소유 확인 메서드
+    private static boolean isUserTurtle(Long turtleId, List<TurtleResponseDTO> userTurtles) {
+        return userTurtles.stream().anyMatch(turtle -> turtle.getId().equals(turtleId));
+    }
+
+    // 유저의 거북이 리스트 조회
     private List<TurtleResponseDTO> getTurtlesByUserId(Long userId) {
         return mainClient.getTurtlesByUserId(userId);
     }
-
-    private void validateDate(LocalDateTime startTime) {
-        if (startTime.isBefore(LocalDateTime.now())) {
-            throw new AuctionTimeNotValidException();
-        }
-    }
-
-//    private void validateTurtleNotAlreadyRegistered(Long turtleId) {
-//        if (auctionRepository.countInProgressAuctionByTurtleId(AuctionProgress.BEFORE_AUCTION, AuctionProgress.DURING_AUCTION, turtleId) > 0) {
-//            throw new TurtleAlreadyRegisteredException();
-//        }
-//    }
 
     private void validateTurtleInfo(Long turtleId) {
         if (auctionRepository.existsByTurtleId(turtleId)) {
