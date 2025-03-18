@@ -76,8 +76,8 @@ public class ImageUploadService {
 	// 파일을 S3에 업로드하고 URL을 반환하는 메서드
 	private String putS3(File uploadFile, String fileName) {
 		// S3에 파일 업로드 요청
-		// amazonS3.putObject(new PutObjectRequest(bucket, fileName, uploadFile)
-		// 	.withCannedAcl(CannedAccessControlList.PublicRead));
+//		 amazonS3.putObject(new PutObjectRequest(bucket, fileName, uploadFile)
+//		 	.withCannedAcl(CannedAccessControlList.PublicRead));
 
 		// CloudFront를 적용한 경우
 		// S3에 파일 업로드 요청
@@ -89,7 +89,7 @@ public class ImageUploadService {
 
 
 		// 업로드된 파일의 URL 반환
-		//return amazonS3.getUrl(bucket, fileName).toString();
+//		return amazonS3.getUrl(bucket, fileName).toString();
 	}
 
 	// S3에서 파일 삭제하는 메서드
@@ -149,6 +149,7 @@ public class ImageUploadService {
 	private String extractS3FileNameFromUrlCloudFront(String url) {
 		try {
 			// CloudFront URL에서 도메인 부분 제거하고 파일 경로만 추출
+//			return url;
 			return url.replace(cloudFrontUrl, "");
 		} catch (Exception e) {
 			throw new RuntimeException("URL 파싱 중 오류 발생", e);

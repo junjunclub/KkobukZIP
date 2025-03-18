@@ -1,20 +1,20 @@
 package com.turtlecoin.auctionservice.domain.auction.controller;
 
-import com.turtlecoin.auctionservice.domain.auction.dto.AuctionListResponseDto;
-import com.turtlecoin.auctionservice.domain.auction.dto.AuctionResultDTO;
 import com.turtlecoin.auctionservice.domain.auction.dto.RegisterAuctionDTO;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionProgress;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
 import com.turtlecoin.auctionservice.domain.auction.service.AuctionService;
-import com.turtlecoin.auctionservice.domain.auction.service.BidService;
+//import com.turtlecoin.auctionservice.domain.auction.service.BidService;
 import com.turtlecoin.auctionservice.domain.auction.service.SchedulingService;
 import com.turtlecoin.auctionservice.domain.auction.service.SseService;
 import com.turtlecoin.auctionservice.domain.s3.service.ImageUploadService;
 import com.turtlecoin.auctionservice.domain.turtle.entity.Gender;
+import com.turtlecoin.auctionservice.global.ApiResponse;
 import com.turtlecoin.auctionservice.global.exception.*;
 import com.turtlecoin.auctionservice.global.response.ResponseVO;
 import com.turtlecoin.auctionservice.global.utils.JWTUtil;
 
+import jakarta.validation.Valid;
 import jakarta.ws.rs.sse.Sse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +44,7 @@ public class AuctionController {
 
     private final ImageUploadService imageUploadService;
     private final AuctionService auctionService;
-    private final BidService bidService;
+//    private final BidService bidService;
     private final AuctionRepository auctionRepository;
     private final SchedulingService schedulingService;
     private final SseService sseService;
@@ -80,15 +80,16 @@ public class AuctionController {
 
     // 경매 등록
     @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
-    public ResponseEntity<?> registerAuction(
-            @RequestPart("data") RegisterAuctionDTO registerAuctionDTO,
+    public ApiResponse registerAuction(
+            @RequestPart("data") @Valid RegisterAuctionDTO registerAuctionDTO,
             @RequestPart(value = "images", required = false) List<MultipartFile> multipartFiles) {
-            // 경매 생성 및 이미지 처리
-            return auctionService.registerAuction(registerAuctionDTO, multipartFiles);
+            auctionService.registerAuction(registerAuctionDTO, multipartFiles);
+            return ApiResponse.success(HttpStatus.OK, "경매 등록 성공");
     }
 
+    // 경매 조회
     @GetMapping
-    public ResponseEntity<?> getAuctions(
+    public ApiResponse getAuctions(
             @RequestParam(value = "gender", required = false) Gender gender,
             @RequestParam(value = "size", required = false) String size,
             @RequestParam(value = "price", required = false) String price,
@@ -126,38 +127,20 @@ public class AuctionController {
         }
         log.info("Gender : {}, minSize : {}, maxSize : {}, minPrice : {}, maxPrice: {}", gender, minSize, maxSize, minPrice, maxPrice);
         // 기존 서비스 메서드를 호출
-        return auctionService.getFilteredAuctions(gender, minSize, maxSize, minPrice, maxPrice, progress, page);
+        return ApiResponse.success(HttpStatus.OK, auctionService.getFilteredAuctions(gender, minSize, maxSize, minPrice, maxPrice, progress, page), "경매 조회에 성공했습니다.");
     }
 
 
     @GetMapping("/{auctionId}")
-    public ResponseEntity<?> getAuctionById(@PathVariable Long auctionId) {
-        return auctionService.getAuctionById(auctionId);
+    public ApiResponse getAuctionById(@PathVariable Long auctionId) {
+        return ApiResponse.success(HttpStatus.OK, auctionService.getAuctionById(auctionId), "상세 경매 조회에 성공했습니다.");
     }
 
-    @GetMapping("/{auctionId}/test")
-    public void test(@PathVariable Long auctionId) {
-        bidService.startAuction(auctionId);
-    }
 
     @GetMapping("/my")
-    public ResponseEntity<?> getMyAuctions(@RequestHeader("Authorization") String token) {
-        try{
-            Long id = jwtUtil.getIdFromToken(token.split(" ")[1]);
-            if(id == null) {
-                throw new UserNotFoundException("유효한 토큰 값이 아닙니다.");
-            }
-            List<AuctionListResponseDto> data = auctionService.getMyAuctions(id);
-            return new ResponseEntity<>(ResponseVO.success("내 경매 조회에 성공하였습니다.", "data", data), HttpStatus.OK);
-        }catch (IOException e){
-            return new ResponseEntity<>(ResponseVO.failure("500", e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
-        }catch(UserNotFoundException e){
-            return new ResponseEntity<>(ResponseVO.failure("401", e.getMessage()), HttpStatus.UNAUTHORIZED);
-        }catch(Exception e){
-            return new ResponseEntity<>(ResponseVO.failure("500", "내 경매 조회 중 예상치 못한 에러가 발생하였습니다."), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-
-
+    public ApiResponse getMyAuctions(@RequestHeader("Authorization") String token) {
+        Long id = jwtUtil.getUserIdFromToken(token);
+        return ApiResponse.success(HttpStatus.OK, auctionService.getMyAuctions(id), "내 경매 조회에 성공했습니다.");
     }
 
 }

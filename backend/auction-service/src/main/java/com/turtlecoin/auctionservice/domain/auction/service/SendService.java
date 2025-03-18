@@ -3,9 +3,11 @@ package com.turtlecoin.auctionservice.domain.auction.service;
 import com.turtlecoin.auctionservice.domain.auction.dto.AuctionResultDTO;
 import com.turtlecoin.auctionservice.domain.auction.entity.Auction;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionProgress;
+import com.turtlecoin.auctionservice.domain.auction.exception.AuctionExceptionMessage;
+import com.turtlecoin.auctionservice.domain.auction.exception.AuctionNotFoundException;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
 import com.turtlecoin.auctionservice.feign.service.UserService;
-import com.turtlecoin.auctionservice.global.exception.AuctionNotFoundException;
+import com.turtlecoin.auctionservice.global.exception.BusinessException;
 import com.turtlecoin.auctionservice.global.response.ResponseVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,7 +53,7 @@ public class SendService {
     @Transactional
     public void endAuction(Long auctionId) {
         ResponseVO<Object> response;
-        Auction auction = auctionRepository.findById(auctionId).orElseThrow(() -> new AuctionNotFoundException("경매를 찾을 수 없습니다"));
+        Auction auction = auctionRepository.findById(auctionId).orElseThrow(AuctionNotFoundException::new);
         String redisBidKey = AUCTION_BID_KEY_PREFIX + auctionId;
         Map<Object, Object> bidData = redisTemplate.opsForHash().entries(redisBidKey);
         Map<String, Object> data = new HashMap<>();

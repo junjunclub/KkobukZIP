@@ -1,6 +1,10 @@
 package com.turtlecoin.auctionservice.domain.websocket.controller;
 
 import com.turtlecoin.auctionservice.domain.auction.entity.Auction;
+import com.turtlecoin.auctionservice.domain.auction.exception.AuctionAlreadyFinishedException;
+import com.turtlecoin.auctionservice.domain.auction.exception.AuctionExceptionMessage;
+import com.turtlecoin.auctionservice.domain.auction.exception.AuctionNotFoundException;
+import com.turtlecoin.auctionservice.domain.auction.exception.AuctionTimeNotValidException;
 import com.turtlecoin.auctionservice.domain.auction.facade.RedissonLockFacade;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
 import com.turtlecoin.auctionservice.domain.auction.service.BidService;
@@ -42,7 +46,7 @@ public class AuctionWebSocketController {
 
     @MessageMapping("/auction/{auctionId}/init")
     public void sendInitialData(@DestinationVariable Long auctionId, Principal principal) {
-        Auction auction = auctionRepository.findById(auctionId).orElseThrow(() -> new AuctionNotFoundException("경매가 존재하지 않습니다."));
+        Auction auction = auctionRepository.findById(auctionId).orElseThrow(AuctionNotFoundException::new);
         String bidKey = AUCTION_BID_KEY+auctionId;
         String endKey = AUCTION_END_KEY_PREFIX+auctionId;
 
