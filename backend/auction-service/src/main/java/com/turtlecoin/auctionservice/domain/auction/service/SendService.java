@@ -1,13 +1,11 @@
 package com.turtlecoin.auctionservice.domain.auction.service;
 
-import com.turtlecoin.auctionservice.domain.auction.dto.AuctionResultDTO;
+import com.turtlecoin.auctionservice.domain.auction.dto.AuctionResultDto;
 import com.turtlecoin.auctionservice.domain.auction.entity.Auction;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionProgress;
-import com.turtlecoin.auctionservice.domain.auction.exception.AuctionExceptionMessage;
 import com.turtlecoin.auctionservice.domain.auction.exception.AuctionNotFoundException;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
 import com.turtlecoin.auctionservice.feign.service.UserService;
-import com.turtlecoin.auctionservice.global.exception.BusinessException;
 import com.turtlecoin.auctionservice.global.response.ResponseVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +41,7 @@ public class SendService {
         rabbitTemplate.convertAndSend(auctionResultExchange, auctionResultRoutingKey, auctionResult);
     }
 
-    public void sendMessage(AuctionResultDTO auctionResultDTO) {
+    public void sendMessage(AuctionResultDto auctionResultDTO) {
         log.info("경매 종료 후 데이터 전송 시도");
         rabbitTemplate.convertAndSend("auction.result.exchange", "auction.result.key", auctionResultDTO);
         log.info("경매 종료 후 데이터 전송 완료");
@@ -79,7 +77,7 @@ public class SendService {
         Long winningUserId = Long.parseLong(bidData.get("userId").toString());
         String nickname = userService.getUserNicknameById(winningUserId);
 
-        AuctionResultDTO auctionResultDTO = createAuctionResultDTO(auction, winningBid, winningUserId);
+        AuctionResultDto auctionResultDTO = createAuctionResultDTO(auction, winningBid, winningUserId);
 
 
 
@@ -101,14 +99,14 @@ public class SendService {
 
 
     @Transactional
-    public AuctionResultDTO createAuctionResultDTO(Auction auction, Double winningBid, Long buyerId) {
+    public AuctionResultDto createAuctionResultDTO(Auction auction, Double winningBid, Long buyerId) {
 
         // 트랜잭션 내에서 auctionPhotos를 초기화하여 Lazy Loading 문제 해결
         if (!auction.getAuctionPhotos().isEmpty()) {
             // auctionPhotos가 있을 경우, 첫 번째 사진 가져오기
             String firstImageAddress = auction.getAuctionPhotos().get(0).getImageUrl();
 
-            return AuctionResultDTO.builder()
+            return AuctionResultDto.builder()
                     .title(auction.getTitle())
                     .content(auction.getContent())
                     .winningBid(winningBid)
@@ -122,7 +120,7 @@ public class SendService {
                     .build();
         } else {
 
-            return AuctionResultDTO.builder()
+            return AuctionResultDto.builder()
                     .title(auction.getTitle())
                     .content(auction.getContent())
                     .winningBid(winningBid)

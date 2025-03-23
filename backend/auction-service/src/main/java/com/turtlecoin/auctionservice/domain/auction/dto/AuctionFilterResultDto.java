@@ -10,17 +10,17 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AuctionFilteredResponseDto {
+public class AuctionFilterResultDto {
     private List<DetailAuctionResponseDTO> auctions;
     private int totalPages;
     private int page;
 
-    public static AuctionFilteredResponseDto from(
+    public static AuctionFilterResultDto from(
             List<DetailAuctionResponseDTO> auctions,
             int totalPages,
             int page
     ) {
-        return AuctionFilteredResponseDto.builder()
+        return AuctionFilterResultDto.builder()
                 .auctions(auctions)
                 .totalPages(totalPages)
                 .page(page)

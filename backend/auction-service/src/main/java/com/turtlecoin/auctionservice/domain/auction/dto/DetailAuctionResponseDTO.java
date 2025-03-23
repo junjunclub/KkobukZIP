@@ -62,6 +62,6 @@ public class DetailAuctionResponseDTO {
     }
 
     private static String formatDate(LocalDateTime dateTime) {
-        return dateTime.toString(); // 포맷이 필요하면 DateTimeFormatter로 대체 가능
+        return dateTime.toString();
     }
 }

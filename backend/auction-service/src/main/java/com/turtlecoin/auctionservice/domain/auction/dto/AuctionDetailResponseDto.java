@@ -4,7 +4,6 @@ import com.turtlecoin.auctionservice.domain.auction.entity.Auction;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionPhoto;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionTag;
 import com.turtlecoin.auctionservice.feign.dto.TurtleFilteredResponseDTO;
-import com.turtlecoin.auctionservice.feign.dto.TurtleResponseDTO;
 import com.turtlecoin.auctionservice.feign.dto.UserResponseDTO;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +17,7 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 @Builder
 @Slf4j
-public class AuctionResponseDTO {
+public class AuctionDetailResponseDto {
     private Long id;
     private Long turtleId;
     private String title;
@@ -43,9 +42,9 @@ public class AuctionResponseDTO {
     private TurtleFilteredResponseDTO turtleInfo;
     private UserResponseDTO userInfo;
 
-    public static AuctionResponseDTO from(Auction auction, TurtleFilteredResponseDTO turtleInfo, UserResponseDTO userInfo, Long remainingTime, Double nowBid, String nickname) {
+    public static AuctionDetailResponseDto from(Auction auction, TurtleFilteredResponseDTO turtleInfo, UserResponseDTO userInfo, Long remainingTime, Double nowBid, String nickname) {
         log.info("Auction Tags: {}", auction.getAuctionTags());
-        return AuctionResponseDTO.builder()
+        return AuctionDetailResponseDto.builder()
                 .id(auction.getId())
                 .turtleId(auction.getTurtleId())
                 .title(auction.getTitle())

@@ -1,7 +1,7 @@
 package com.turtlecoin.auctionservice.domain.auction.controller;
 
-import com.turtlecoin.auctionservice.domain.auction.dto.AuctionFilterRequest;
-import com.turtlecoin.auctionservice.domain.auction.dto.RegisterAuctionDTO;
+import com.turtlecoin.auctionservice.domain.auction.dto.AuctionQueryParamsDto;
+import com.turtlecoin.auctionservice.domain.auction.dto.CreateAuctionRequestDto;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
 import com.turtlecoin.auctionservice.domain.auction.service.AuctionService;
 //import com.turtlecoin.auctionservice.domain.auction.service.BidService;
@@ -70,15 +70,15 @@ public class AuctionController {
     // 경매 등록
     @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     public ApiResponse registerAuction(
-            @RequestPart("data") @Valid RegisterAuctionDTO registerAuctionDTO,
+            @RequestPart("data") @Valid CreateAuctionRequestDto createAuctionRequestDto,
             @RequestPart(value = "images", required = false) List<MultipartFile> multipartFiles) {
-            auctionService.registerAuction(registerAuctionDTO, multipartFiles);
+            auctionService.registerAuction(createAuctionRequestDto, multipartFiles);
             return ApiResponse.success(HttpStatus.OK, "경매 등록 성공");
     }
 
     // 경매 조회
     @GetMapping
-    public ApiResponse getAuctions(@ModelAttribute AuctionFilterRequest filter) {
+    public ApiResponse getAuctions(@ModelAttribute @Valid AuctionQueryParamsDto filter) {
         return ApiResponse.success(HttpStatus.OK, auctionService.getFilteredAuctions(filter), "경매 조회에 성공했습니다.");
     }
 

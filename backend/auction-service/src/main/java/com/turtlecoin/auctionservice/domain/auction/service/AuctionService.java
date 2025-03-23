@@ -55,7 +55,7 @@ public class AuctionService {
 
     // 경매 등록
     @Transactional
-    public void registerAuction(RegisterAuctionDTO dto, List<MultipartFile> images) {
+    public void registerAuction(CreateAuctionRequestDto dto, List<MultipartFile> images) {
         imageValidation(images);
         validateTurtleOwnershipByUser(dto.getUserId(), dto.getTurtleId());
         validateTurtleNotRegistered(dto.getTurtleId());
@@ -124,7 +124,7 @@ public class AuctionService {
                 log.info("redis에 입찰 가격이 있을 때");
             }
             log.info("RemainingTime : {}", remainingTime);
-            AuctionResponseDTO data = AuctionResponseDTO.from(auction, turtle, user, remainingTime, nowBid, nickname);
+            AuctionDetailResponseDto data = AuctionDetailResponseDto.from(auction, turtle, user, remainingTime, nowBid, nickname);
             return new ResponseEntity<>(ResponseVO.success("경매가 정상적으로 조회되었습니다.", "auction", data), HttpStatus.OK);
         } catch (AuctionNotFoundException e) {
             return new ResponseEntity<>(ResponseVO.failure("400", e.getMessage()), HttpStatus.BAD_REQUEST);
@@ -168,7 +168,7 @@ public class AuctionService {
                 .toList(); // 리스트로 수집
     }
 
-    public AuctionFilteredResponseDto getFilteredAuctions(AuctionFilterRequest filter) {
+    public AuctionFilterResultDto getFilteredAuctions(AuctionQueryParamsDto filter) {
         QAuction auction = QAuction.auction;
         BooleanBuilder whereClause = buildWhereClause(filter);
 
@@ -183,12 +183,17 @@ public class AuctionService {
 
         int totalPages = calculateTotalPages(auction, whereClause, turtleMap);
 
-        return AuctionFilteredResponseDto.from(dtos, totalPages, filter.getPage());
+        return AuctionFilterResultDto.from(dtos, totalPages, filter.getPage());
     }
 
-    private List<Auction> fetchFilteredAuctionsFromQueryDsl(AuctionFilterRequest filter, QAuction auction, BooleanBuilder whereClause, Map<Long, TurtleFilteredResponseDTO> turtleMap) {
+    private List<Auction> fetchFilteredAuctionsFromQueryDsl(
+            AuctionQueryParamsDto filter, QAuction auction,
+            BooleanBuilder whereClause, Map<Long, TurtleFilteredResponseDTO> turtleMap) {
+
         return queryFactory.selectFrom(auction)
-                .where(whereClause.and(auction.turtleId.in(turtleMap.keySet())))
+                .where(whereClause
+                        .and(auction.turtleId.in(turtleMap.keySet()))
+                )
                 .offset(filter.getPage() * 20L)
                 .limit(20)
                 .fetch();
@@ -202,7 +207,7 @@ public class AuctionService {
         );
     }
 
-    private BooleanBuilder buildWhereClause(AuctionFilterRequest filter) {
+    private BooleanBuilder buildWhereClause(AuctionQueryParamsDto filter) {
         QAuction auction = QAuction.auction;
         BooleanBuilder whereClause = new BooleanBuilder();
 
@@ -211,6 +216,7 @@ public class AuctionService {
 
         return whereClause;
     }
+
 
     private void addPriceCondition(BooleanBuilder builder, QAuction auction, Double minPrice, Double maxPrice) {
         if (minPrice != null && maxPrice != null) {
@@ -233,12 +239,13 @@ public class AuctionService {
                 .collect(Collectors.toMap(TurtleFilteredResponseDTO::getId, t -> t));
     }
 
-    private List<TurtleFilteredResponseDTO> getFilteredTurtles(AuctionFilterRequest filter) {
+    private List<TurtleFilteredResponseDTO> getFilteredTurtles(AuctionQueryParamsDto filter) {
         List<TurtleFilteredResponseDTO> turtles = mainClient.getFilteredTurtles(
                 filter.getGender(), filter.getMinSize(), filter.getMaxSize()
         );
+
         if (turtles == null || turtles.isEmpty()) {
-            throw new TurtleNotFoundException();
+            return Collections.emptyList();
         }
         return turtles;
     }
@@ -266,7 +273,6 @@ public class AuctionService {
         }
     }
 
-    // 사용자가 소유한 거북이인지 검증 메서드
     private void validateTurtleOwnershipByUser(Long userId, Long turtleId) {
         boolean ownsTurtle = fetchUserTurtles(userId).stream()
                 .anyMatch(turtle -> turtle.getId().equals(turtleId));
@@ -282,7 +288,6 @@ public class AuctionService {
         }
     }
 
-    // 이미지 업로드 처리 메서드
     private List<AuctionPhoto> uploadImages(List<MultipartFile> images, Auction auction) {
         List<AuctionPhoto> photos = new ArrayList<>();
         try {
@@ -297,7 +302,6 @@ public class AuctionService {
         }
     }
 
-    // 업로드된 이미지 삭제 메서드
     public void deleteUploadedImages(List<AuctionPhoto> auctionPhotos) {
         for (AuctionPhoto photo : auctionPhotos) {
             s3Service.deleteS3(photo.getImageAddress());

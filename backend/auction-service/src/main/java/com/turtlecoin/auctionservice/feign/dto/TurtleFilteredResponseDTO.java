@@ -6,9 +6,7 @@ import lombok.*;
 import java.time.LocalDate;
 
 
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 @Builder
 public class TurtleFilteredResponseDTO {
     private Long id;

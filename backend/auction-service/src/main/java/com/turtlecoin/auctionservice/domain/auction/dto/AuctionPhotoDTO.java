@@ -3,14 +3,14 @@ package com.turtlecoin.auctionservice.domain.auction.dto;
 import com.turtlecoin.auctionservice.domain.auction.entity.AuctionPhoto;
 import lombok.*;
 
-@Getter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class AuctionPhotoDTO {
-    private String imageAddress;
-
-    public static AuctionPhotoDTO from(AuctionPhoto photo) {
-        return new AuctionPhotoDTO(photo.getImageAddress());
-    }
-}
+//@Getter
+//@NoArgsConstructor
+//@AllArgsConstructor
+//@Builder
+//public class AuctionPhotoDTO {
+//    private String imageAddress;
+//
+//    public static AuctionPhotoDTO from(AuctionPhoto photo) {
+//        return new AuctionPhotoDTO(photo.getImageAddress());
+//    }
+//}
