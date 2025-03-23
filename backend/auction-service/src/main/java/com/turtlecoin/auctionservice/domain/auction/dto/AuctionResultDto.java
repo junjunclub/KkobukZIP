@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class AuctionResultDTO {
+public class AuctionResultDto {
     private String title;
     private String content;
     private Double winningBid;

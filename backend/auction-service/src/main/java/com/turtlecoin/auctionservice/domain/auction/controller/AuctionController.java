@@ -1,40 +1,29 @@
 package com.turtlecoin.auctionservice.domain.auction.controller;
 
-import com.turtlecoin.auctionservice.domain.auction.dto.RegisterAuctionDTO;
-import com.turtlecoin.auctionservice.domain.auction.entity.AuctionProgress;
+import com.turtlecoin.auctionservice.domain.auction.dto.AuctionQueryParamsDto;
+import com.turtlecoin.auctionservice.domain.auction.dto.CreateAuctionRequestDto;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
 import com.turtlecoin.auctionservice.domain.auction.service.AuctionService;
 //import com.turtlecoin.auctionservice.domain.auction.service.BidService;
 import com.turtlecoin.auctionservice.domain.auction.service.SchedulingService;
 import com.turtlecoin.auctionservice.domain.auction.service.SseService;
-import com.turtlecoin.auctionservice.domain.s3.service.ImageUploadService;
-import com.turtlecoin.auctionservice.domain.turtle.entity.Gender;
+import com.turtlecoin.auctionservice.domain.s3.service.S3Service;
 import com.turtlecoin.auctionservice.global.ApiResponse;
-import com.turtlecoin.auctionservice.global.exception.*;
-import com.turtlecoin.auctionservice.global.response.ResponseVO;
 import com.turtlecoin.auctionservice.global.utils.JWTUtil;
 
 import jakarta.validation.Valid;
-import jakarta.ws.rs.sse.Sse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.AmqpConnectException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 @Slf4j
 @RestController
@@ -42,7 +31,7 @@ import java.util.function.Consumer;
 @RequestMapping("/auction")
 public class AuctionController {
 
-    private final ImageUploadService imageUploadService;
+    private final S3Service s3Service;
     private final AuctionService auctionService;
 //    private final BidService bidService;
     private final AuctionRepository auctionRepository;
@@ -81,53 +70,16 @@ public class AuctionController {
     // 경매 등록
     @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     public ApiResponse registerAuction(
-            @RequestPart("data") @Valid RegisterAuctionDTO registerAuctionDTO,
+            @RequestPart("data") @Valid CreateAuctionRequestDto createAuctionRequestDto,
             @RequestPart(value = "images", required = false) List<MultipartFile> multipartFiles) {
-            auctionService.registerAuction(registerAuctionDTO, multipartFiles);
+            auctionService.registerAuction(createAuctionRequestDto, multipartFiles);
             return ApiResponse.success(HttpStatus.OK, "경매 등록 성공");
     }
 
     // 경매 조회
     @GetMapping
-    public ApiResponse getAuctions(
-            @RequestParam(value = "gender", required = false) Gender gender,
-            @RequestParam(value = "size", required = false) String size,
-            @RequestParam(value = "price", required = false) String price,
-            @RequestParam(value = "progress", required = false) AuctionProgress progress,
-            @RequestParam(value = "page", defaultValue = "0") int page
-    ) {
-
-        log.info("Gender : {}, Size : {}, Price : {}", gender, size, price, progress);
-        // size 파라미터 변환 처리 (AbetweenB -> A-B)
-        Double minSize = null;
-        Double maxSize = null;
-        if (size != null && size.contains("-")) {
-            String[] sizeRange = size.split("-");
-
-            if (sizeRange.length == 2) {
-                log.info(sizeRange[0]);
-                log.info(sizeRange[1]);
-                minSize = Double.parseDouble(sizeRange[0]);
-                maxSize = Double.parseDouble(sizeRange[1]);
-            }
-        }
-
-        // price 파라미터 변환 처리 (AbetweenB -> A-B)
-        Double minPrice = null;
-        Double maxPrice = null;
-        if (price != null && price.contains("-")) {
-            String[] priceRange = price.split("-");
-
-            if (priceRange.length == 2) {
-                log.info(priceRange[0]);
-                log.info(priceRange[1]);
-                minPrice = Double.parseDouble(priceRange[0]);
-                maxPrice = Double.parseDouble(priceRange[1]);
-            }
-        }
-        log.info("Gender : {}, minSize : {}, maxSize : {}, minPrice : {}, maxPrice: {}", gender, minSize, maxSize, minPrice, maxPrice);
-        // 기존 서비스 메서드를 호출
-        return ApiResponse.success(HttpStatus.OK, auctionService.getFilteredAuctions(gender, minSize, maxSize, minPrice, maxPrice, progress, page), "경매 조회에 성공했습니다.");
+    public ApiResponse getAuctions(@ModelAttribute @Valid AuctionQueryParamsDto filter) {
+        return ApiResponse.success(HttpStatus.OK, auctionService.getFilteredAuctions(filter), "경매 조회에 성공했습니다.");
     }
 
 

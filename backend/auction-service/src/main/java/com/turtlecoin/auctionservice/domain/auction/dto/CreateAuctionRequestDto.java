@@ -18,8 +18,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Getter
 @NoArgsConstructor
-// DTO 수정해야함.
-public class RegisterAuctionDTO {
+public class CreateAuctionRequestDto {
     @NotNull(message = "거북이 ID는 필수입니다.")
     private Long turtleId;
 
@@ -52,9 +51,9 @@ public class RegisterAuctionDTO {
     private List<String> auctionTags;
 
     @Builder
-    public RegisterAuctionDTO(Long turtleId, Long userId, LocalDateTime startTime, Double minBid,
-                              String content, String title, int weight, String sellerAddress, Gender gender,
-                              List<String> auctionTags) {
+    public CreateAuctionRequestDto(Long turtleId, Long userId, LocalDateTime startTime, Double minBid,
+                                   String content, String title, int weight, String sellerAddress, Gender gender,
+                                   List<String> auctionTags) {
         this.turtleId = turtleId;
         this.userId = userId;
         this.startTime = startTime;
