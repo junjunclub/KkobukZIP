@@ -1,6 +1,8 @@
 package com.turtlecoin.auctionservice.domain.auction.dto;
 
-import com.turtlecoin.auctionservice.domain.auction.entity.AuctionProgress;
+import com.turtlecoin.auctionservice.domain.auction.entity.Auction;
+import com.turtlecoin.auctionservice.feign.dto.TurtleFilteredResponseDTO;
+import com.turtlecoin.auctionservice.feign.dto.UserResponseDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,24 +16,52 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class DetailAuctionResponseDTO {
+
     private Long auctionId;
     private Long sellerId;
     private String sellerName;
-    private String documentHash;
     private Long turtleId;
     private String scientificName;
     private Double price;
     private String createDate;
     private String title;
     private String sellerImageUrl;
-    private String sellerUuid;
     private String sellerAddress;
-    private String turtleUuid;
     private Long buyerId;
-    private String buyerUuid;
     private int weight;
     private String content;
-    private List<String> auctionTag;  // 태그 목록
-    private List<String> auctionImage;  // 이미지 경로 목록
-    private String progress;  // 진행 상황 (Enum 값)
+    private List<String> auctionTag;
+    private List<String> auctionImage;
+    private String progress;
+
+    public static DetailAuctionResponseDTO from(
+            Auction auction,
+            UserResponseDTO user,
+            TurtleFilteredResponseDTO turtle,
+            List<String> tags,
+            List<String> images
+    ) {
+        return DetailAuctionResponseDTO.builder()
+                .auctionId(auction.getId())
+                .sellerId(user.getUserId())
+                .sellerName(user.getName())
+                .turtleId(turtle.getId())
+                .scientificName(turtle.getScientificName())
+                .price(auction.getNowBid())
+                .createDate(formatDate(auction.getCreateDate()))
+                .title(auction.getTitle())
+                .sellerImageUrl(user.getProfileImage())
+                .sellerAddress(auction.getSellerAddress())
+                .buyerId(auction.getBuyerId())
+                .weight(auction.getWeight())
+                .content(auction.getContent())
+                .auctionTag(tags)
+                .auctionImage(images)
+                .progress(auction.getAuctionProgress().name())
+                .build();
+    }
+
+    private static String formatDate(LocalDateTime dateTime) {
+        return dateTime.toString(); // 포맷이 필요하면 DateTimeFormatter로 대체 가능
+    }
 }

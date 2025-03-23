@@ -23,7 +23,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @PropertySource("classpath:s3.properties")
-public class ImageUploadService {
+public class S3Service {
 	private final AmazonS3 amazonS3;
 
 	// s3.properties 파일에서 받아 온 S3 버킷 이름

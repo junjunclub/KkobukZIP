@@ -3,7 +3,7 @@ package com.turtlecoin.auctionservice.feign.dto;
 import lombok.*;
 
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class UserResponseDTO {
