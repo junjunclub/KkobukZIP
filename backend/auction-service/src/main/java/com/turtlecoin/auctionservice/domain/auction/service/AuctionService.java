@@ -5,7 +5,6 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.turtlecoin.auctionservice.domain.auction.dto.*;
 import com.turtlecoin.auctionservice.domain.auction.entity.*;
 import com.turtlecoin.auctionservice.domain.auction.exception.*;
-import com.turtlecoin.auctionservice.domain.auction.facade.RedissonLockFacade;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
 import com.turtlecoin.auctionservice.domain.s3.exception.S3UploadFailedException;
 import com.turtlecoin.auctionservice.domain.s3.service.S3Service;
@@ -15,9 +14,11 @@ import com.turtlecoin.auctionservice.feign.MainClient;
 import com.turtlecoin.auctionservice.feign.dto.UserResponseDTO;
 import com.turtlecoin.auctionservice.feign.service.UserService;
 import com.turtlecoin.auctionservice.global.response.ResponseVO;
+import com.turtlecoin.auctionservice.global.utils.RedisKeyUtil;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -40,17 +41,13 @@ import java.util.stream.Collectors;
 public class AuctionService {
 
     private final RedisTemplate<String, Object> redisTemplate;
-
+    private final RedisKeyUtil redisKeyUtil;
     private final AuctionRepository auctionRepository;
     private final S3Service s3Service;
     private final MainClient mainClient;
     private final JPAQueryFactory queryFactory;
-    private final RedissonLockFacade redissonLockFacade;
     private final SchedulingService schedulingService;
     private final BidService bidService;
-    private final SseService sseService;
-    private static final String AUCTION_END_KEY_PREFIX = "auction_end_";
-    private static final String AUCTION_BID_KEY = "auction_bid_";
     private final UserService userService;
 
     // 경매 등록
@@ -77,63 +74,18 @@ public class AuctionService {
     }
 
     // 경매 ID로 경매 조회
-    public ResponseEntity<?> getAuctionById(Long auctionId) {
-        try {
-            Auction auction = auctionRepository.findById(auctionId)
-                    .orElseThrow(AuctionNotFoundException::new);
+    public AuctionDetailResponseDto getAuctionById(Long auctionId) {
+        Auction auction = getAuction(auctionId);
+        TurtleFilteredResponseDTO turtle = getTurtleFilteredResponseDTO(auction);
+        UserResponseDTO user = getUserResponseDTO(auction);
 
-            TurtleFilteredResponseDTO turtle = mainClient.getTurtle(auction.getTurtleId());
+        RedisAuctionInfoDto redisInfo = getAuctionInfoFromRedis(auction);
 
-            if (turtle == null) {
-                log.warn("거북이 정보를 찾을 수 없습니다: turtleId={}", auction.getTurtleId());
-                throw new TurtleNotFoundException();
-            }
-            log.info("TurtleID: {}", turtle.getId());
-            UserResponseDTO user = mainClient.getUserById(auction.getUserId());
-            if (user == null) {
-                log.warn("사용자 정보를 찾을 수 없습니다: UserId={}", auction.getUserId());
-                throw new UserNotFoundException();
-            }
-            log.info("UserID: {}", user.getUserId());
-
-            String key = AUCTION_END_KEY_PREFIX + auction;
-            // null값일 때 어떻게 하지?
-            Long remainingTime = redisTemplate.getExpire(AUCTION_END_KEY_PREFIX + auctionId, TimeUnit.MILLISECONDS);
-
-//            // 종료됐거나, 시작하지 않았을 때
-//            if (remainingTime == -2) {
-//                if (auction.getEndTime().isAfter(LocalDateTime.now())) {
-//                    remainingTime = 0L;
-//                } else {
-//                    // 아직 시작 안한 경매
-//                    remainingTime = 0L;
-//                }
-//            }
-
-            Object bidAmountObj = redisTemplate.opsForHash().get(key, "bidAmount");
-            String nickname;
-            Double nowBid;
-            if (bidAmountObj == null) {
-                nowBid = auction.getMinBid();
-                log.info("redis에 입찰 가격이 없을 때");
-                nickname = null;
-            } else {
-                nowBid = Double.parseDouble(bidAmountObj.toString());  // Object를 Double로 변환
-                Long bidUserId = (long) redisTemplate.opsForHash().get(key, "userId");
-                nickname = userService.getUserNicknameById(bidUserId);
-                log.info("redis에 입찰 가격이 있을 때");
-            }
-            log.info("RemainingTime : {}", remainingTime);
-            AuctionDetailResponseDto data = AuctionDetailResponseDto.from(auction, turtle, user, remainingTime, nowBid, nickname);
-            return new ResponseEntity<>(ResponseVO.success("경매가 정상적으로 조회되었습니다.", "auction", data), HttpStatus.OK);
-        } catch (AuctionNotFoundException e) {
-            return new ResponseEntity<>(ResponseVO.failure("400", e.getMessage()), HttpStatus.BAD_REQUEST);
-
-        } catch (FeignException e) {
-            return new ResponseEntity<>(ResponseVO.failure("503", "Main-Service가 응답하지 않습니다." + e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
-        } catch (Exception e) {
-            return new ResponseEntity<>(ResponseVO.failure("500", "경매 조회 과정 중에 서버 에러가 발생하였습니다."), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        return AuctionDetailResponseDto.from(
+                auction, turtle, user,
+                redisInfo.getRemainingTime(),
+                redisInfo.getNowBid(),
+                redisInfo.getBidNickname());
     }
 
     public List<AuctionListResponseDto> getMyAuctions(Long userId) {
@@ -267,6 +219,11 @@ public class AuctionService {
         );
     }
 
+    private Auction getAuction(Long auctionId) {
+        return auctionRepository.findById(auctionId)
+                .orElseThrow(AuctionNotFoundException::new);
+    }
+
     private static void imageValidation(List<MultipartFile> images) {
         if (images == null || images.isEmpty()) {
             throw new PhotoNotUploadedException();
@@ -288,6 +245,25 @@ public class AuctionService {
         }
     }
 
+    private UserResponseDTO getUserResponseDTO(Auction auction) {
+        return validateNotNull(
+                mainClient.getUserById(auction.getUserId()),
+                new UserNotFoundException()
+        );
+    }
+
+    private TurtleFilteredResponseDTO getTurtleFilteredResponseDTO(Auction auction) {
+        return validateNotNull(
+                mainClient.getTurtle(auction.getTurtleId()),
+                new TurtleNotFoundException()
+        );
+    }
+
+    private <T> T validateNotNull(T obj, RuntimeException exception) {
+        if (obj == null) throw exception;
+        return obj;
+    }
+
     private List<AuctionPhoto> uploadImages(List<MultipartFile> images, Auction auction) {
         List<AuctionPhoto> photos = new ArrayList<>();
         try {
@@ -306,6 +282,23 @@ public class AuctionService {
         for (AuctionPhoto photo : auctionPhotos) {
             s3Service.deleteS3(photo.getImageAddress());
         }
+    }
+
+    private RedisAuctionInfoDto getAuctionInfoFromRedis(Auction auction) {
+        String key = redisKeyUtil.auctionEndKey(auction.getId());
+
+        Long remainingTime = redisTemplate.getExpire(key, TimeUnit.MILLISECONDS);
+        Object bidAmountObj = redisTemplate.opsForHash().get(key, "bidAmount");
+
+        if (bidAmountObj == null) {
+            return new RedisAuctionInfoDto(remainingTime, auction.getMinBid(), null);
+        }
+
+        Double nowBid = Double.parseDouble(bidAmountObj.toString());
+        Long bidUserId = (Long) redisTemplate.opsForHash().get(key, "userId");
+        String nickname = userService.getUserNicknameById(bidUserId);
+
+        return new RedisAuctionInfoDto(remainingTime, nowBid, nickname);
     }
 
     // 서버 재시작시 스케줄링 다시 등록하기
