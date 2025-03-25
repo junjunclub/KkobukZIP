@@ -85,7 +85,7 @@ public class CreateAuctionRequestDto {
         if (auctionTags != null && !auctionTags.isEmpty()) {
             List<AuctionTag> tagEntities = auctionTags.stream()
                     .map(tag -> new AuctionTag(auction, tag))
-                    .collect(Collectors.toList());
+                            .toList();
 
             auction.addAuctionTags(tagEntities);
         }

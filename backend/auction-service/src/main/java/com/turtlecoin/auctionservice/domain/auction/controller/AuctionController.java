@@ -1,9 +1,6 @@
 package com.turtlecoin.auctionservice.domain.auction.controller;
 
-import com.turtlecoin.auctionservice.domain.auction.dto.AuctionDetailResponseDto;
-import com.turtlecoin.auctionservice.domain.auction.dto.AuctionFilterResultDto;
-import com.turtlecoin.auctionservice.domain.auction.dto.AuctionQueryParamsDto;
-import com.turtlecoin.auctionservice.domain.auction.dto.CreateAuctionRequestDto;
+import com.turtlecoin.auctionservice.domain.auction.dto.*;
 import com.turtlecoin.auctionservice.domain.auction.service.AuctionService;
 import com.turtlecoin.auctionservice.domain.auction.service.SseService;
 import com.turtlecoin.auctionservice.global.ApiResponse;
@@ -84,7 +81,7 @@ public class AuctionController {
 
 
     @GetMapping("/my")
-    public ApiResponse getMyAuctions(@RequestHeader("Authorization") String token) {
+    public ApiResponse<AuctionListResponseDto> getMyAuctions(@RequestHeader("Authorization") String token) {
         Long id = jwtUtil.getUserIdFromToken(token);
         return ApiResponse.success(HttpStatus.OK, auctionService.getMyAuctions(id), "내 경매 조회에 성공했습니다.");
     }

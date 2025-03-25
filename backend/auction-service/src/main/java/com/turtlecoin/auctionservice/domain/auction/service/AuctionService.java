@@ -13,17 +13,12 @@ import com.turtlecoin.auctionservice.feign.dto.TurtleResponseDTO;
 import com.turtlecoin.auctionservice.feign.MainClient;
 import com.turtlecoin.auctionservice.feign.dto.UserResponseDTO;
 import com.turtlecoin.auctionservice.feign.service.UserService;
-import com.turtlecoin.auctionservice.global.response.ResponseVO;
 import com.turtlecoin.auctionservice.global.utils.RedisKeyUtil;
-import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -50,7 +45,6 @@ public class AuctionService {
     private final BidService bidService;
     private final UserService userService;
 
-    // 경매 등록
     @Transactional
     public void registerAuction(CreateAuctionRequestDto dto, List<MultipartFile> images) {
         imageValidation(images);
@@ -68,12 +62,6 @@ public class AuctionService {
         auction.getAuctionPhotos().addAll(uploadedPhotos);
     }
 
-    // 유저의 거북이 리스트 조회
-    private List<TurtleResponseDTO> fetchUserTurtles(Long userId) {
-        return mainClient.getTurtlesByUserId(userId);
-    }
-
-    // 경매 ID로 경매 조회
     public AuctionDetailResponseDto getAuctionById(Long auctionId) {
         Auction auction = getAuction(auctionId);
         TurtleFilteredResponseDTO turtle = getTurtleFilteredResponseDTO(auction);
@@ -88,36 +76,9 @@ public class AuctionService {
                 redisInfo.getBidNickname());
     }
 
-    public List<AuctionListResponseDto> getMyAuctions(Long userId) {
-        // Auction 엔티티 목록 가져오기
+    public AuctionListResponseDto getMyAuctions(Long userId) {
         List<Auction> auctions = auctionRepository.findAllByUser(userId);
-
-        // Turtle 정보와 User 정보는 각 Auction과 관련된 데이터를 적절히 조회해서 전달해야 합니다.
-        return auctions.stream()
-                .map(auction -> {
-                    // 첫 번째 이미지 주소 추출
-                    String firstImageUrl = auction.getFirstImageUrl();
-
-                    // AuctionResultDTO로 변환
-                    return AuctionListResponseDto.builder()
-
-                            .title(auction.getTitle())
-                            .content(auction.getContent())
-                            .weight(auction.getWeight())
-                            .turtleId(auction.getTurtleId())
-                            .id(auction.getId())
-                            .sellerAddress(auction.getSellerAddress())
-                            .auctionFlag(true)
-                            .progress(auction.getAuctionProgress())
-                            .buyerId(auction.getBuyerId())
-                            .sellerId(auction.getUserId())
-                            .images(firstImageUrl)
-                            .tags(auction.getAuctionTags().stream()
-                                    .map(AuctionTag::getTag)
-                                    .collect(Collectors.toList())) // 태그 리스트
-                            .build();
-                })
-                .toList(); // 리스트로 수집
+        return AuctionListResponseDto.from(auctions);
     }
 
     public AuctionFilterResultDto getFilteredAuctions(AuctionQueryParamsDto filter) {
@@ -169,6 +130,9 @@ public class AuctionService {
         return whereClause;
     }
 
+    private List<TurtleResponseDTO> fetchUserTurtles(Long userId) {
+        return mainClient.getTurtlesByUserId(userId);
+    }
 
     private void addPriceCondition(BooleanBuilder builder, QAuction auction, Double minPrice, Double maxPrice) {
         if (minPrice != null && maxPrice != null) {
@@ -278,7 +242,7 @@ public class AuctionService {
         }
     }
 
-    public void deleteUploadedImages(List<AuctionPhoto> auctionPhotos) {
+    private void deleteUploadedImages(List<AuctionPhoto> auctionPhotos) {
         for (AuctionPhoto photo : auctionPhotos) {
             s3Service.deleteS3(photo.getImageAddress());
         }
