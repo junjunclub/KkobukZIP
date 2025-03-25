@@ -35,22 +35,22 @@ bootJar {
 jar {
 	enabled = false
 }
-//
-//sourceSets {
-//	main {
-//		java {
-//			srcDirs = ['src/main/java', 'src/main/generated']
-//		}
-//	}
-//}
 
 sourceSets {
 	main {
 		java {
-			srcDirs += ["$buildDir/generated/sources/annotationProcessor/java/main"]
+			srcDirs = ['src/main/java', 'src/main/generated']
 		}
 	}
 }
+
+//sourceSets {
+//	main {
+//		java {
+//			srcDirs += ["$buildDir/generated/sources/annotationProcessor/java/main"]
+//		}
+//	}
+//}
 
 
 dependencies {

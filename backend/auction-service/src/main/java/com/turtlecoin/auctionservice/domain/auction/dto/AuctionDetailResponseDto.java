@@ -63,7 +63,7 @@ public class AuctionDetailResponseDto {
                 .progress(auction.getAuctionProgress().toString())
                 .tags(auction.getAuctionTags().stream()
                         .map(AuctionTag::getTag)
-                        .collect(Collectors.toList())) // 태그 리스트
+                        .toList())
                 .images(auction.getAuctionPhotos().stream()  // 이미지 주소만 추출
                         .map(AuctionPhoto::getImageAddress)
                         .toList())

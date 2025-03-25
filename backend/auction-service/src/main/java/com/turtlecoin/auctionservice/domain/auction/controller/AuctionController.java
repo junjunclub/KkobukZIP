@@ -1,13 +1,8 @@
 package com.turtlecoin.auctionservice.domain.auction.controller;
 
-import com.turtlecoin.auctionservice.domain.auction.dto.AuctionQueryParamsDto;
-import com.turtlecoin.auctionservice.domain.auction.dto.CreateAuctionRequestDto;
-import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
+import com.turtlecoin.auctionservice.domain.auction.dto.*;
 import com.turtlecoin.auctionservice.domain.auction.service.AuctionService;
-//import com.turtlecoin.auctionservice.domain.auction.service.BidService;
-import com.turtlecoin.auctionservice.domain.auction.service.SchedulingService;
 import com.turtlecoin.auctionservice.domain.auction.service.SseService;
-import com.turtlecoin.auctionservice.domain.s3.service.S3Service;
 import com.turtlecoin.auctionservice.global.ApiResponse;
 import com.turtlecoin.auctionservice.global.utils.JWTUtil;
 
@@ -31,11 +26,7 @@ import java.util.Map;
 @RequestMapping("/auction")
 public class AuctionController {
 
-    private final S3Service s3Service;
     private final AuctionService auctionService;
-//    private final BidService bidService;
-    private final AuctionRepository auctionRepository;
-    private final SchedulingService schedulingService;
     private final SseService sseService;
     private final JWTUtil jwtUtil;
 
@@ -69,28 +60,28 @@ public class AuctionController {
 
     // 경매 등록
     @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
-    public ApiResponse registerAuction(
+    public ApiResponse<Void> registerAuction(
             @RequestPart("data") @Valid CreateAuctionRequestDto createAuctionRequestDto,
             @RequestPart(value = "images", required = false) List<MultipartFile> multipartFiles) {
             auctionService.registerAuction(createAuctionRequestDto, multipartFiles);
-            return ApiResponse.success(HttpStatus.OK, "경매 등록 성공");
+            return ApiResponse.success(HttpStatus.OK, "경매 등록에 성공했습니다.");
     }
 
     // 경매 조회
     @GetMapping
-    public ApiResponse getAuctions(@ModelAttribute @Valid AuctionQueryParamsDto filter) {
+    public ApiResponse<AuctionFilterResultDto> getAuctions(@ModelAttribute @Valid AuctionQueryParamsDto filter) {
         return ApiResponse.success(HttpStatus.OK, auctionService.getFilteredAuctions(filter), "경매 조회에 성공했습니다.");
     }
 
 
     @GetMapping("/{auctionId}")
-    public ApiResponse getAuctionById(@PathVariable Long auctionId) {
+    public ApiResponse<AuctionDetailResponseDto> getAuctionById(@PathVariable Long auctionId) {
         return ApiResponse.success(HttpStatus.OK, auctionService.getAuctionById(auctionId), "상세 경매 조회에 성공했습니다.");
     }
 
 
     @GetMapping("/my")
-    public ApiResponse getMyAuctions(@RequestHeader("Authorization") String token) {
+    public ApiResponse<AuctionListResponseDto> getMyAuctions(@RequestHeader("Authorization") String token) {
         Long id = jwtUtil.getUserIdFromToken(token);
         return ApiResponse.success(HttpStatus.OK, auctionService.getMyAuctions(id), "내 경매 조회에 성공했습니다.");
     }
