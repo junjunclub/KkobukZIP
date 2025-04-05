@@ -1,5 +1,6 @@
 package com.turtlecoin.mainservice.domain.transaction.service;
 
+import com.turtlecoin.jwt.JWTUtil;
 import com.turtlecoin.mainservice.domain.s3.service.ImageUploadService;
 import com.turtlecoin.mainservice.domain.transaction.dto.DetailTransactionResponseDto;
 import com.turtlecoin.mainservice.domain.transaction.dto.TransactionDto;
@@ -16,9 +17,11 @@ import com.turtlecoin.mainservice.domain.turtle.entity.Turtle;
 import com.turtlecoin.mainservice.domain.turtle.repository.TurtleRepository;
 import com.turtlecoin.mainservice.domain.user.entity.User;
 import com.turtlecoin.mainservice.domain.user.exception.UserNotFoundException;
+import com.turtlecoin.mainservice.domain.user.repository.UserRepository;
 import com.turtlecoin.mainservice.domain.user.service.JWTService;
 import com.turtlecoin.mainservice.global.response.ResponseVO;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,22 +36,17 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class TransactionService {
     private final ImageUploadService imageUploadService;
     private final TurtleRepository turtleRepository;
     private final TransactionRepository transactionRepository;
+    private final UserRepository userRepository;
     private final JWTService jwtService;
+    private final JWTUtil jwtUtil;
 
     public Transaction findTransactionById(Long id) {
         return transactionRepository.findById(id).orElse(null);
-    }
-
-
-    public TransactionService(ImageUploadService imageUploadService, TurtleRepository turtleRepository, TransactionRepository transactionRepository, JWTService jwtService) {
-        this.imageUploadService = imageUploadService;
-        this.turtleRepository = turtleRepository;
-        this.transactionRepository = transactionRepository;
-        this.jwtService = jwtService;
     }
 
     public List<DetailTransactionResponseDto> findAllTransactions(User user) {
@@ -60,7 +58,7 @@ public class TransactionService {
     public ResponseEntity<?> enrollTransaction(TransactionRequestDto dto, List<MultipartFile> photos, String token) {
         TransactionDto transaction = new TransactionDto();
         try{
-            Optional<User> user = jwtService.getUserByToken(token);
+            Optional<User> user = userRepository.findById(jwtUtil.getClaim(token, "id", Long.class));
             if(user.isEmpty()){
                 throw new UserNotFoundException("유효한 토큰이 아닙니다.");
             }

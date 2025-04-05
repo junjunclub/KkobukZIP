@@ -43,7 +43,7 @@ import com.turtlecoin.mainservice.domain.turtle.service.TurtleService;
 import com.turtlecoin.mainservice.domain.user.entity.Role;
 import com.turtlecoin.mainservice.domain.user.entity.User;
 import com.turtlecoin.mainservice.domain.user.service.UserService;
-import com.turtlecoin.mainservice.domain.user.util.JWTUtil;
+import com.turtlecoin.jwt.JWTUtil;
 import com.turtlecoin.mainservice.global.exception.DocumentNotFoundException;
 import com.turtlecoin.mainservice.global.exception.DocumentProgressException;
 import com.turtlecoin.mainservice.global.exception.NotTransferDocumentException;
@@ -431,7 +431,7 @@ public class DocumentController {
 
 		try{
 			String accessToken = header.getFirst("Authorization").split("Bearer ")[1].split(" ")[0];
-			Role role = Role.valueOf(jwtUtil.getRoleFromToken(accessToken));
+			Role role = Role.valueOf(jwtUtil.getClaim(accessToken, "role", String.class));
 
 			if(role != Role.ROLE_ADMIN){
 				return new ResponseEntity<>(ResponseVO.failure("401", "관리자만 접근 가능합니다."), HttpStatus.UNAUTHORIZED);
@@ -477,7 +477,7 @@ public class DocumentController {
 		DocumentResponseDto documentResponseDto;
 		try{
 			String accessToken = header.getFirst("Authorization").split("Bearer ")[1].split(" ")[0];
-			Role role = Role.valueOf(jwtUtil.getRoleFromToken(accessToken));
+			Role role = Role.valueOf(jwtUtil.getClaim(accessToken, "role", String.class));
 			User user = userRepository.findById(jwtUtil.getIdFromToken(accessToken)).get();
 
 			if(user.getRole() != Role.ROLE_ADMIN || role != Role.ROLE_ADMIN){

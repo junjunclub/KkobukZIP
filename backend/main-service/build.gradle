@@ -21,6 +21,13 @@ configurations {
 }
 
 repositories {
+	maven {
+		url = uri("https://maven.pkg.github.com/junjunclub/jwt-common")
+		credentials {
+			username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
+			password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
+		}
+	}
 	mavenCentral()
 }
 
@@ -61,6 +68,7 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
 	implementation 'io.jsonwebtoken:jjwt-impl:0.12.3'
 	implementation 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+	implementation 'com.turtlecoin:jwt-common:1.0.4'
 
 	//querydsl
 	implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'

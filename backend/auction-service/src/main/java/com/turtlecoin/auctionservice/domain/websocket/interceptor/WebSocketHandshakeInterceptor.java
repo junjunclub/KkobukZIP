@@ -3,7 +3,7 @@ package com.turtlecoin.auctionservice.domain.websocket.interceptor;
 import com.turtlecoin.auctionservice.feign.MainClient;
 import com.turtlecoin.auctionservice.feign.dto.UserResponseDTO;
 import com.turtlecoin.auctionservice.global.config.StompPrincipal;
-import com.turtlecoin.auctionservice.global.utils.JWTUtil;
+import com.turtlecoin.jwt.JWTUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

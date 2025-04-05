@@ -21,7 +21,7 @@ import com.turtlecoin.mainservice.domain.chat.service.ChatService;
 import com.turtlecoin.mainservice.domain.chat.service.SseService;
 import com.turtlecoin.mainservice.domain.user.dto.UserResponseDTO;
 import com.turtlecoin.mainservice.domain.user.service.UserService;
-import com.turtlecoin.mainservice.domain.user.util.JWTUtil;
+import com.turtlecoin.jwt.JWTUtil;
 import com.turtlecoin.mainservice.global.response.ResponseVO;
 import com.turtlecoin.mainservice.global.util.WebSocketUtil;
 

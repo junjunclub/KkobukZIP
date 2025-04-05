@@ -19,7 +19,7 @@ import com.turtlecoin.mainservice.domain.user.dto.UserResponseDTO;
 import com.turtlecoin.mainservice.domain.user.entity.User;
 import com.turtlecoin.mainservice.domain.user.service.JWTService;
 import com.turtlecoin.mainservice.domain.user.service.UserService;
-import com.turtlecoin.mainservice.domain.user.util.JWTUtil;
+import com.turtlecoin.jwt.JWTUtil;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
