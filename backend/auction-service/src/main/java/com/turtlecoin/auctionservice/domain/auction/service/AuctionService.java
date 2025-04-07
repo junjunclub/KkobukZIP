@@ -6,7 +6,9 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.turtlecoin.auctionservice.domain.auction.dto.*;
 import com.turtlecoin.auctionservice.domain.auction.entity.*;
 import com.turtlecoin.auctionservice.domain.auction.exception.*;
+import com.turtlecoin.auctionservice.domain.auction.repository.AuctionPhotoRepository;
 import com.turtlecoin.auctionservice.domain.auction.repository.AuctionRepository;
+import com.turtlecoin.auctionservice.domain.auction.repository.AuctionTagRepository;
 import com.turtlecoin.auctionservice.domain.s3.exception.S3UploadFailedException;
 import com.turtlecoin.auctionservice.domain.s3.service.S3Service;
 import com.turtlecoin.auctionservice.feign.dto.TurtleFilteredResponseDTO;
@@ -14,6 +16,7 @@ import com.turtlecoin.auctionservice.feign.dto.TurtleResponseDTO;
 import com.turtlecoin.auctionservice.feign.MainClient;
 import com.turtlecoin.auctionservice.feign.dto.UserResponseDTO;
 import com.turtlecoin.auctionservice.feign.service.UserService;
+import com.turtlecoin.auctionservice.global.utils.MapUtil;
 import com.turtlecoin.auctionservice.global.utils.RedisKeyUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +42,8 @@ public class AuctionService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisKeyUtil redisKeyUtil;
     private final AuctionRepository auctionRepository;
+    private final AuctionTagRepository auctionTagRepository;
+    private final AuctionPhotoRepository auctionPhotoRepository;
     private final S3Service s3Service;
     private final MainClient mainClient;
     private final JPAQueryFactory queryFactory;
@@ -91,6 +96,25 @@ public class AuctionService {
 
         List<AuctionProjectionDto> auctions = fetchAuctionProjections(filter, auction, whereClause, turtleMap);
 
+        List<Long> auctionIds = auctions.stream()
+                .map(AuctionProjectionDto::getAuctionId)
+                .toList();
+
+        List<AuctionTagProjectionDto> tagProjections = auctionTagRepository.findTagsByAuctionIds(auctionIds);
+        List<AuctionPhotoProjectionDto> photoProjections = auctionPhotoRepository.findPhotosByAuctionIds(auctionIds);
+
+        Map<Long, List<String>> tagMap = MapUtil.groupByAuctionId(
+                tagProjections,
+                AuctionTagProjectionDto::auctionId,
+                AuctionTagProjectionDto::tag
+        );
+
+        Map<Long, List<String>> photoMap = MapUtil.groupByAuctionId(
+                photoProjections,
+                AuctionPhotoProjectionDto::auctionId,
+                AuctionPhotoProjectionDto::imageAddress
+        );
+
         Set<Long> userIds = auctions.stream()
                 .map(AuctionProjectionDto::getUserId)
                 .collect(Collectors.toSet());
@@ -102,9 +126,12 @@ public class AuctionService {
                 .map(proj -> {
                     UserResponseDTO user = userMap.get(proj.getUserId());
                     TurtleFilteredResponseDTO turtle = turtleMap.get(proj.getTurtleId());
-                    return DetailAuctionResponseDTO.fromProjection(proj, user, turtle);
+                    List<String> tags = tagMap.getOrDefault(proj.getAuctionId(), List.of());
+                    List<String> images = photoMap.getOrDefault(proj.getAuctionId(), List.of());
+                    return DetailAuctionResponseDTO.fromProjection(proj, user, turtle, tags, images);
                 })
                 .toList();
+
 
         int totalPages = calculateTotalPages(auction, whereClause, turtleMap);
 

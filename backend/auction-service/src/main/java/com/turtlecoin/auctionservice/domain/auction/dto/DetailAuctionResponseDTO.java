@@ -64,7 +64,9 @@ public class DetailAuctionResponseDTO {
     public static DetailAuctionResponseDTO fromProjection(
             AuctionProjectionDto proj,
             UserResponseDTO user,
-            TurtleFilteredResponseDTO turtle
+            TurtleFilteredResponseDTO turtle,
+            List<String> tags,
+            List<String> images
     ) {
         return DetailAuctionResponseDTO.builder()
                 .auctionId(proj.getAuctionId())
@@ -77,18 +79,14 @@ public class DetailAuctionResponseDTO {
                 .title(proj.getTitle())
                 .sellerImageUrl(user.getProfileImage())
                 .sellerAddress(proj.getSellerAddress())
-                .buyerId(null)
-                .weight(0)
-                .content(null)
-                .auctionTag(List.of())
-                .auctionImage(List.of())
-                .progress(proj.getProgress())
                 .buyerId(proj.getBuyerId())
                 .weight(proj.getWeight())
                 .content(proj.getContent())
+                .auctionTag(tags)
+                .auctionImage(images)
+                .progress(proj.getProgress())
                 .build();
     }
-
 
     private static String formatDate(LocalDateTime dateTime) {
         return dateTime.toString();
