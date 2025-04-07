@@ -1,6 +1,7 @@
 package com.turtlecoin.auctionservice.domain.auction.service;
 
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.turtlecoin.auctionservice.domain.auction.dto.*;
 import com.turtlecoin.auctionservice.domain.auction.entity.*;
@@ -88,10 +89,21 @@ public class AuctionService {
         List<TurtleFilteredResponseDTO> filteredTurtles = getFilteredTurtles(filter);
         Map<Long, TurtleFilteredResponseDTO> turtleMap = convertToTurtleMap(filteredTurtles);
 
-        List<Auction> auctions = fetchFilteredAuctionsFromQueryDsl(filter, auction, whereClause, turtleMap);
+        List<AuctionProjectionDto> auctions = fetchAuctionProjections(filter, auction, whereClause, turtleMap);
+
+        Set<Long> userIds = auctions.stream()
+                .map(AuctionProjectionDto::getUserId)
+                .collect(Collectors.toSet());
+
+        Map<Long, UserResponseDTO> userMap = mainClient.getUsersByIds(new ArrayList<>(userIds)).stream()
+                .collect(Collectors.toMap(UserResponseDTO::getUserId, u -> u));
 
         List<DetailAuctionResponseDTO> dtos = auctions.stream()
-                .map(auc -> convertToDetailDTO(auc, turtleMap))
+                .map(proj -> {
+                    UserResponseDTO user = userMap.get(proj.getUserId());
+                    TurtleFilteredResponseDTO turtle = turtleMap.get(proj.getTurtleId());
+                    return DetailAuctionResponseDTO.fromProjection(proj, user, turtle);
+                })
                 .toList();
 
         int totalPages = calculateTotalPages(auction, whereClause, turtleMap);
@@ -99,25 +111,82 @@ public class AuctionService {
         return AuctionFilterResultDto.from(dtos, totalPages, filter.getPage());
     }
 
-    private List<Auction> fetchFilteredAuctionsFromQueryDsl(
-            AuctionQueryParamsDto filter, QAuction auction,
-            BooleanBuilder whereClause, Map<Long, TurtleFilteredResponseDTO> turtleMap) {
+//    private List<Auction> fetchFilteredAuctionsFromQueryDsl(
+//            AuctionQueryParamsDto filter, QAuction auction,
+//            BooleanBuilder whereClause, Map<Long, TurtleFilteredResponseDTO> turtleMap) {
+//
+//        List<Long> auctionIds = getPagedAuctionIds(filter, whereClause, turtleMap);
+//
+//        if (auctionIds.isEmpty()) {
+//            return Collections.emptyList();
+//        }
+//
+//        return getDetailAuctions(auctionIds);
+//    }
 
-        return queryFactory.selectFrom(auction)
-                .where(whereClause
-                        .and(auction.turtleId.in(turtleMap.keySet()))
-                )
+    private List<AuctionProjectionDto> fetchAuctionProjections(
+            AuctionQueryParamsDto filter,
+            QAuction auction,
+            BooleanBuilder whereClause,
+            Map<Long, TurtleFilteredResponseDTO> turtleMap
+    ) {
+        return queryFactory
+                .select(Projections.constructor(AuctionProjectionDto.class,
+                        auction.id,
+                        auction.turtleId,
+                        auction.userId,
+                        auction.title,
+                        auction.nowBid,
+                        auction.sellerAddress,
+                        auction.createDate,
+                        auction.auctionProgress.stringValue(),
+                        auction.buyerId,
+                        auction.weight,
+                        auction.content
+                ))
+                .from(auction)
+                .where(whereClause.and(auction.turtleId.in(turtleMap.keySet())))
+                .orderBy(auction.createDate.desc())
                 .offset(filter.getPage() * 20L)
                 .limit(20)
                 .fetch();
     }
 
+    private List<Long> getPagedAuctionIds(
+            AuctionQueryParamsDto filter,
+            BooleanBuilder whereClause,
+            Map<Long, TurtleFilteredResponseDTO> turtleMap) {
+
+        QAuction auction = QAuction.auction;
+
+        return queryFactory.select(auction.id)
+                .from(auction)
+                .where(whereClause.and(auction.turtleId.in(turtleMap.keySet())))
+                .orderBy(auction.createDate.desc())
+                .offset(filter.getPage() * 20L)
+                .limit(20)
+                .fetch();
+    }
+
+    private List<Auction> getDetailAuctions(List<Long> auctionIds) {
+        QAuction auction = QAuction.auction;
+        QAuctionTag auctionTag = QAuctionTag.auctionTag;
+
+        return queryFactory.selectFrom(auction)
+                .leftJoin(auction.auctionTags, auctionTag).fetchJoin()
+                .where(auction.id.in(auctionIds))
+                .distinct()
+                .fetch();
+    }
+
     private int calculateTotalPages(QAuction auction, BooleanBuilder whereClause, Map<Long, TurtleFilteredResponseDTO> turtleMap) {
-        return (int) Math.ceil(
-                (double) queryFactory.selectFrom(auction)
-                        .where(whereClause.and(auction.turtleId.in(turtleMap.keySet())))
-                        .fetch().size() / 20
-        );
+        Long totalCount = queryFactory
+                .select(auction.count())
+                .from(auction)
+                .where(whereClause.and(auction.turtleId.in(turtleMap.keySet())))
+                .fetchOne();
+
+        return (int) Math.ceil((totalCount != null ? totalCount : 0) / 20.0);
     }
 
     private BooleanBuilder buildWhereClause(AuctionQueryParamsDto filter) {
@@ -166,8 +235,12 @@ public class AuctionService {
         return turtles;
     }
 
-    private DetailAuctionResponseDTO convertToDetailDTO(Auction auction, Map<Long, TurtleFilteredResponseDTO> turtleMap) {
-        UserResponseDTO userInfo = mainClient.getUserById(auction.getUserId());
+    private DetailAuctionResponseDTO convertToDetailDTO(
+            Auction auction,
+            Map<Long, TurtleFilteredResponseDTO> turtleMap,
+            Map<Long, UserResponseDTO> userMap) {
+
+        UserResponseDTO userInfo = userMap.get(auction.getUserId());
         TurtleFilteredResponseDTO turtleInfo = turtleMap.get(auction.getTurtleId());
 
         if (userInfo == null || turtleInfo == null) {

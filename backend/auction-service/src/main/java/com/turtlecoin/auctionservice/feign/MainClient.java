@@ -34,4 +34,6 @@ public interface MainClient {
     @GetMapping("/main/user/{userId}/nickname")
     String getUserNicknameById(@PathVariable("userId") Long userId);
 
+    @GetMapping("/main/user/batch")
+    List<UserResponseDTO> getUsersByIds(@RequestParam("userIds") List<Long> userIds);
 }

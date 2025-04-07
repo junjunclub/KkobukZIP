@@ -3,6 +3,7 @@ package com.turtlecoin.auctionservice.global;
 import com.turtlecoin.auctionservice.domain.auction.exception.*;
 import lombok.extern.slf4j.Slf4j;
 
+import org.hibernate.loader.MultipleBagFetchException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -64,6 +65,13 @@ public class GlobalExceptionHandler {
     public ApiResponse<Void> handleMissingServletRequestPartException(MissingServletRequestPartException e) {
         log.error(e.getMessage());
         return ApiResponse.error(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(MultipleBagFetchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleMultipleBagFetchException(MultipleBagFetchException e) {
+        log.error(e.getMessage());
+        return ApiResponse.error(HttpStatus.BAD_REQUEST, "데이터를 조회하는 중 문제가 발생했습니다. 다시 시도해주세요.");
     }
 
 

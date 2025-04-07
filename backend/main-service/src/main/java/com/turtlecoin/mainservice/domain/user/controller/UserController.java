@@ -99,16 +99,7 @@ public class UserController {
         Long userId = Long.valueOf(passedUserId);
         User user = userRepository.findById(userId).orElseThrow(() ->
                 new UserNotFoundException("이용자를 찾을 수 없습니다."));
-        return new UserResponseDTO(
-                user.getId(),
-                user.getUuid(),
-                user.getNickname(),
-                user.getEmail(),
-                user.getName(),
-                user.getAddress(),
-                user.getBirth(),
-                user.getProfileImage()
-        );
+        return UserResponseDTO.from(user);
     }
 
 
@@ -185,6 +176,13 @@ public class UserController {
     public String getUserNicknameById (@PathVariable("userId") Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("존재하지 않는 사용자입니다."));
         return user.getNickname();
+    }
+
+    @GetMapping("/batch")
+    public List<UserResponseDTO> getUsersByIds(@RequestParam List<Long> userIds) {
+        return userRepository.findAllById(userIds).stream()
+                .map(UserResponseDTO::from)
+                .toList();
     }
 
 }

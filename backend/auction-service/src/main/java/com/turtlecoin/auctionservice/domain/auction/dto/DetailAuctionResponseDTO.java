@@ -61,6 +61,35 @@ public class DetailAuctionResponseDTO {
                 .build();
     }
 
+    public static DetailAuctionResponseDTO fromProjection(
+            AuctionProjectionDto proj,
+            UserResponseDTO user,
+            TurtleFilteredResponseDTO turtle
+    ) {
+        return DetailAuctionResponseDTO.builder()
+                .auctionId(proj.getAuctionId())
+                .sellerId(user.getUserId())
+                .sellerName(user.getName())
+                .turtleId(turtle.getId())
+                .scientificName(turtle.getScientificName())
+                .price(proj.getNowBid())
+                .createDate(proj.getCreateDate().toString())
+                .title(proj.getTitle())
+                .sellerImageUrl(user.getProfileImage())
+                .sellerAddress(proj.getSellerAddress())
+                .buyerId(null)
+                .weight(0)
+                .content(null)
+                .auctionTag(List.of())
+                .auctionImage(List.of())
+                .progress(proj.getProgress())
+                .buyerId(proj.getBuyerId())
+                .weight(proj.getWeight())
+                .content(proj.getContent())
+                .build();
+    }
+
+
     private static String formatDate(LocalDateTime dateTime) {
         return dateTime.toString();
     }

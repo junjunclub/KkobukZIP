@@ -1,6 +1,5 @@
 package com.turtlecoin.mainservice.global.config;
 
-import com.turtlecoin.mainservice.domain.user.util.JWTUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.RedisTemplate;
