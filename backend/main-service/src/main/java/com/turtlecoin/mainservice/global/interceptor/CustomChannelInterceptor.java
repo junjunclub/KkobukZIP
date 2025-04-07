@@ -9,9 +9,7 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 
 import java.security.Principal;
-import java.util.Map;
-
-import com.turtlecoin.mainservice.domain.user.util.JWTUtil;
+import com.turtlecoin.jwt.JWTUtil;
 import com.turtlecoin.mainservice.global.util.CustomPrincipal;
 
 import lombok.RequiredArgsConstructor;

@@ -1,44 +1,32 @@
 package com.turtlecoin.mainservice.domain.user.service;
 
-import com.turtlecoin.mainservice.domain.chat.service.SseService;
-import com.turtlecoin.mainservice.domain.user.dto.LoginUserDto;
+import com.turtlecoin.jwt.JWTUtil;
 import com.turtlecoin.mainservice.domain.user.entity.User;
 import com.turtlecoin.mainservice.domain.user.exception.IssueTokenException;
+import com.turtlecoin.mainservice.domain.user.exception.UserNotFoundException;
 import com.turtlecoin.mainservice.domain.user.repository.UserRepository;
-import com.turtlecoin.mainservice.domain.user.util.JWTUtil;
+import com.turtlecoin.mainservice.domain.user.util.JWTValidator;
 import com.turtlecoin.mainservice.global.exception.RedisSaveException;
 import com.turtlecoin.mainservice.global.response.ResponseVO;
-import feign.FeignException;
 import io.jsonwebtoken.ExpiredJwtException;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@RequiredArgsConstructor
 public class JWTService {
     private final JWTUtil jwtUtil;
+    private final JWTValidator jwtValidator;
     private final RedisTemplate<String,String> redisTemplate;
     private final UserRepository userRepository;
-
-
-    @Autowired
-    JWTService(JWTUtil jwtUtil, RedisTemplate<String, String> redisTemplate, UserRepository userRepository) {
-        this.jwtUtil = jwtUtil;
-        this.redisTemplate = redisTemplate;
-        this.userRepository = userRepository;
-    }
-
-    public Optional<User> getUserByToken(String token) {
-        return userRepository.findById(jwtUtil.getIdFromToken(token.split(" ")[1]));
-    }
 
     public Map<String,Object> issueToken(Optional<User> user) throws RedisSaveException, IssueTokenException {
         try{
@@ -86,7 +74,7 @@ public class JWTService {
     // 로그아웃 요청시 redis에서 refreshToken 제거
     public ResponseEntity<?> logoutService(String RefreshToken) {
         // Refresh token 검증
-        if (!jwtUtil.validateRefreshToken(RefreshToken)) {
+        if (!jwtValidator.validateRefreshToken(RefreshToken)) {
             return new ResponseEntity<>(ResponseVO.failure("400", "로그아웃 처리 중 오류가 발생했습니다."), HttpStatus.BAD_REQUEST);
         }
 
@@ -120,16 +108,16 @@ public class JWTService {
 
         // Redis에서 refresh token 조회
         ValueOperations<String, String> valueOps = redisTemplate.opsForValue();
-        String storedToken = valueOps.get(jwtUtil.getUsernameFromToken(refreshToken)); // Key 패턴에 맞게 수정
+        String storedToken = valueOps.get(jwtUtil.getClaim(refreshToken, "username", String.class)); // Key 패턴에 맞게 수정
 
         if (storedToken == null || !storedToken.equals(refreshToken)) {
             return new ResponseEntity<>(ResponseVO.failure("400","Invalid refresh token"), HttpStatus.BAD_REQUEST);
         }
 
-        String username = jwtUtil.getUsernameFromToken(refreshToken);
-        String role = jwtUtil.getRoleFromToken(refreshToken);
-        Long id = jwtUtil.getIdFromToken(refreshToken);
-        String uuid = jwtUtil.getUuidFromToken(refreshToken);
+        String username = jwtUtil.getClaim(refreshToken, "username", String.class);
+        String role = jwtUtil.getClaim(refreshToken, "role", String.class);
+        Long id = jwtUtil.getClaim(refreshToken, "id", Long.class);
+        String uuid = jwtUtil.getClaim(refreshToken, "uuid", String.class);
 
         //make new JWT
         String newAccess = jwtUtil.createToken("access",username,role,id,uuid,600000L);
@@ -143,10 +131,15 @@ public class JWTService {
 
         return new ResponseEntity<>(responseBody, HttpStatus.OK);
     }
+
+    public User getUserFromToken(String token) {
+        Long userId = jwtUtil.getClaim(token, "id", Long.class);
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("존재하지 않는 회원입니다."));
+    }
+
+
     public Long getIdFromToken(String token) {
         return jwtUtil.getIdFromToken(token);
-    }
-    public String getUUIDFromToken(String token) {
-        return jwtUtil.getUuidFromToken(token);
     }
 }

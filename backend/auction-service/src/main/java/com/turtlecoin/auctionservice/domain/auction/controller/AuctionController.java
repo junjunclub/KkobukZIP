@@ -4,8 +4,9 @@ import com.turtlecoin.auctionservice.domain.auction.dto.*;
 import com.turtlecoin.auctionservice.domain.auction.service.AuctionService;
 import com.turtlecoin.auctionservice.domain.auction.service.SseService;
 import com.turtlecoin.auctionservice.global.ApiResponse;
-import com.turtlecoin.auctionservice.global.utils.JWTUtil;
 
+import com.turtlecoin.auctionservice.global.utils.JWTValidator;
+import com.turtlecoin.jwt.JWTUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,12 +24,11 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/auction")
+@RequestMapping("/auctions")
 public class AuctionController {
 
     private final AuctionService auctionService;
     private final SseService sseService;
-    private final JWTUtil jwtUtil;
 
     // 테스트
     @GetMapping("/test")
@@ -81,9 +81,9 @@ public class AuctionController {
 
 
     @GetMapping("/my")
-    public ApiResponse<AuctionListResponseDto> getMyAuctions(@RequestHeader("Authorization") String token) {
-        Long id = jwtUtil.getUserIdFromToken(token);
-        return ApiResponse.success(HttpStatus.OK, auctionService.getMyAuctions(id), "내 경매 조회에 성공했습니다.");
+    public ApiResponse<AuctionListResponseDto> getMyAuctions(@RequestHeader("X-User-Id") String passedUserId) {
+        Long userId = Long.valueOf(passedUserId);
+        return ApiResponse.success(HttpStatus.OK, auctionService.getMyAuctions(userId), "내 경매 조회에 성공했습니다.");
     }
 
 }

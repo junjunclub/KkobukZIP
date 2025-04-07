@@ -3,7 +3,7 @@ package com.turtlecoin.auctionservice.domain.websocket.config;
 
 import com.turtlecoin.auctionservice.domain.websocket.interceptor.WebSocketHandshakeInterceptor;
 import com.turtlecoin.auctionservice.feign.MainClient;
-import com.turtlecoin.auctionservice.global.utils.JWTUtil;
+import com.turtlecoin.jwt.JWTUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.RedisTemplate;

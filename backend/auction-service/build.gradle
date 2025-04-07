@@ -21,8 +21,16 @@ configurations {
 }
 
 repositories {
+	maven {
+		url = uri("https://maven.pkg.github.com/junjunclub/jwt-common")
+		credentials {
+			username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
+			password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
+		}
+	}
 	mavenCentral()
 }
+
 
 ext {
 	set('springCloudVersion', "2023.0.3")
@@ -36,21 +44,21 @@ jar {
 	enabled = false
 }
 
-sourceSets {
-	main {
-		java {
-			srcDirs = ['src/main/java', 'src/main/generated']
-		}
-	}
-}
-
 //sourceSets {
 //	main {
 //		java {
-//			srcDirs += ["$buildDir/generated/sources/annotationProcessor/java/main"]
+//			srcDirs = ['src/main/java', 'src/main/generated']
 //		}
 //	}
 //}
+
+sourceSets {
+	main {
+		java {
+			srcDirs += ["$buildDir/generated/sources/annotationProcessor/java/main"]
+		}
+	}
+}
 
 
 dependencies {
@@ -95,6 +103,7 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
 	implementation 'io.jsonwebtoken:jjwt-impl:0.12.3'
 	implementation 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+	implementation 'com.turtlecoin:jwt-common:1.0.4'
 
 	//security
 	implementation 'org.springframework.boot:spring-boot-starter-security'

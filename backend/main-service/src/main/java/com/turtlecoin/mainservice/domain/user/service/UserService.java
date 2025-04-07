@@ -165,7 +165,7 @@ public class UserService {
     public ResponseEntity<?> getTurtlesByUserId (Long userId) {
         try {
             User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
             List<UserTurtleResponseDTO> dtos =  user.getTurtles().stream()
                     .map(turtle -> UserTurtleResponseDTO.builder()
                             .id(turtle.getId())

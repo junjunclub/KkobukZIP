@@ -7,7 +7,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
-import com.turtlecoin.mainservice.domain.user.util.JWTUtil;
+//import com.turtlecoin.mainservice.domain.user.util.JWTUtil;
 import com.turtlecoin.mainservice.global.interceptor.CustomChannelInterceptor;
 
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-	private final JWTUtil jwtUtil;
+//	private final JWTUtil jwtUtil;
 	private final CustomChannelInterceptor customChannelInterceptor;
 
 	@Override

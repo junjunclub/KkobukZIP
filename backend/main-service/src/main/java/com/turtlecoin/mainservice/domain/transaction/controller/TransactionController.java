@@ -1,6 +1,6 @@
 package com.turtlecoin.mainservice.domain.transaction.controller;
 
-import com.turtlecoin.mainservice.domain.transaction.dto.DetailTransactionResponseDto;
+
 import com.turtlecoin.mainservice.domain.transaction.dto.TransactionRequestDto;
 import com.turtlecoin.mainservice.domain.transaction.entity.Transaction;
 import com.turtlecoin.mainservice.domain.transaction.repository.TransactionRepository;
@@ -11,37 +11,28 @@ import com.turtlecoin.mainservice.domain.user.entity.User;
 import com.turtlecoin.mainservice.domain.user.exception.UserNotFoundException;
 import com.turtlecoin.mainservice.domain.user.repository.UserRepository;
 import com.turtlecoin.mainservice.domain.user.service.JWTService;
-import com.turtlecoin.mainservice.domain.user.service.UserService;
-import com.turtlecoin.mainservice.domain.user.util.JWTUtil;
+import com.turtlecoin.jwt.JWTUtil;
 import com.turtlecoin.mainservice.global.response.ResponseVO;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/main/transaction")
+@RequiredArgsConstructor
 public class TransactionController {
     private final TransactionService transactionService;
     private final TransactionRepository transactionRepository;
     private final JWTService jwtService;
+    private final JWTUtil jwtUtil;
+    private final UserRepository userRepository;
     private final TurtleRepository turtleRepository;
-
-    public TransactionController(TransactionService transactionService, JWTService jwtService, TransactionRepository transactionRepository, UserService userService, TurtleRepository turtleRepository) {
-        this.transactionService = transactionService;
-        this.transactionRepository = transactionRepository;
-        this.jwtService = jwtService;
-        this.turtleRepository = turtleRepository;
-    }
 
     @GetMapping("/test")
     public String test() {
@@ -80,7 +71,7 @@ public class TransactionController {
                     .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 거래 ID입니다."));
             token = token.split(" ")[1];
             Long userId = jwtService.getIdFromToken(token);
-            String userUUID = jwtService.getUUIDFromToken(token);
+            String userUUID = jwtUtil.getClaim(token, "uuid", String.class);
             if(userId==null||userUUID==null){
                 throw new UserNotFoundException("유효한 토큰이 아닙니다.");
             }
@@ -105,7 +96,7 @@ public class TransactionController {
         try{
             Transaction transaction = transactionRepository.findById(transactionId)
                     .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 거래 ID입니다."));
-            Optional<User> user = jwtService.getUserByToken(token);
+            Optional<User> user = userRepository.findById(jwtUtil.getClaim(token, "id", Long.class));
             if(user.isEmpty()||!user.get().getUuid().equals(transaction.getBuyerUuid())){
                 throw new UserNotFoundException("유효한 토큰 요청이 아닙니다.");
             }
